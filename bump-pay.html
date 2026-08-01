@@ -113,4 +113,294 @@
     font-size: 14px;
   }
   .add-form input[type=text] { flex: 1; min-width: 120px; }
-  .add-form input[type=number]
+  .add-form input[type=number] { width: 90px; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip {
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    color: #bbb;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .chip.selected { border-color: var(--gold); color: var(--gold); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: #888; font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); text-transform: uppercase; font-size: 11px; }
+  td { padding: 8px; border-bottom: 1px solid #1f1f1f; }
+  tr:last-child td { border-bottom: none; }
+
+  .badge { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .badge.paid { background: rgba(63,174,92,0.15); color: var(--green); }
+  .badge.unpaid { background: rgba(224,122,95,0.15); color: #e07a5f; }
+  .badge.square { background: rgba(224,166,58,0.15); color: var(--gold); }
+
+  .totals { display: flex; gap: 24px; margin-top: 4px; font-size: 13px; color: #aaa; }
+  .totals b { color: var(--gold); }
+
+  .row-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--line);
+    color: #999;
+    border-radius: 5px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .icon-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+  .empty { color: #666; font-size: 13px; padding: 12px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+const STORAGE_KEY = "bumpPayLedger_v1";
+const SQUARE_FN_URL = "/.netlify/functions/square-sales";
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return {
+    sellers: ["Dennis", "Crew 1"],
+    products: ["Lighter", "Hot Wheels Car", "T-Shirt", "Vinyl"],
+    sales: []
+  };
+}
+
+function saveState(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {}
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+function App() {
+  const [state, setState] = useState(loadState);
+  const [tab, setTab] = useState("Dennis");
+  const [product, setProduct] = useState("");
+  const [amount, setAmount] = useState("");
+  const [seller, setSeller] = useState("Dennis");
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null);
+  const [syncOk, setSyncOk] = useState(null);
+
+  useEffect(() => { saveState(state); }, [state]);
+  useEffect(() => { setSeller(tab); }, [tab]);
+
+  const sellers = state.sellers;
+  const sales = state.sales;
+
+  const salesForTab = useMemo(
+    () => sales.filter(s => s.seller === tab).sort((a, b) => b.ts - a.ts),
+    [sales, tab]
+  );
+
+  const totals = useMemo(() => {
+    const total = salesForTab.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+    const paid = salesForTab.filter(s => s.paid).reduce((sum, s) => sum + Number(s.amount || 0), 0);
+    const unpaid = total - paid;
+    return { total, paid, unpaid };
+  }, [salesForTab]);
+
+  function addSale(e) {
+    e.preventDefault();
+    if (!product || !amount) return;
+    const newSale = {
+      id: uid(),
+      seller,
+      product,
+      amount: Number(amount),
+      paid: false,
+      source: "manual",
+      ts: Date.now()
+    };
+    setState(s => ({ ...s, sales: [newSale, ...s.sales] }));
+    setProduct("");
+    setAmount("");
+  }
+
+  function togglePaid(id) {
+    setState(s => ({
+      ...s,
+      sales: s.sales.map(sale => sale.id === id ? { ...sale, paid: !sale.paid } : sale)
+    }));
+  }
+
+  function removeSale(id) {
+    setState(s => ({ ...s, sales: s.sales.filter(sale => sale.id !== id) }));
+  }
+
+  function addSeller() {
+    const name = prompt("New seller / crew member name:");
+    if (name && !state.sellers.includes(name)) {
+      setState(s => ({ ...s, sellers: [...s.sellers, name] }));
+      setTab(name);
+    }
+  }
+
+  async function syncSquare() {
+    setSyncing(true);
+    setSyncMsg("Pulling last 30 days from Square...");
+    setSyncOk(null);
+    try {
+      const res = await fetch(SQUARE_FN_URL);
+      if (!res.ok) throw new Error("Function returned " + res.status);
+      const data = await res.json();
+      const payments = Array.isArray(data) ? data : (data.payments || []);
+
+      setState(s => {
+        const existingIds = new Set(
+          s.sales.filter(sale => sale.squarePaymentId).map(sale => sale.squarePaymentId)
+        );
+        const newOnes = payments
+          .filter(p => p.id && !existingIds.has(p.id))
+          .map(p => ({
+            id: uid(),
+            squarePaymentId: p.id,
+            seller: "Dennis",
+            product: (p.note || p.description || "Square Sale"),
+            amount: p.amount_money ? (p.amount_money.amount / 100) : (p.amount || 0),
+            paid: true,
+            source: "square",
+            ts: p.created_at ? new Date(p.created_at).getTime() : Date.now()
+          }));
+        return { ...s, sales: [...newOnes, ...s.sales] };
+      });
+
+      setSyncMsg(
+        (data.added !== undefined ? data.added : "new") + " new sale(s) synced from Square."
+      );
+      setSyncOk(true);
+    } catch (err) {
+      setSyncMsg("Sync failed: " + err.message + ". Check the Netlify function log.");
+      setSyncOk(false);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="header">
+        <h1>Bump Pay</h1>
+        <div className="sub">Fat Patties — Seller Payout Ledger</div>
+      </div>
+
+      <div className="sync-row">
+        <button className="btn primary" onClick={syncSquare} disabled={syncing}>
+          {syncing ? "Syncing..." : "Sync Square Sales"}
+        </button>
+        <button className="btn" onClick={addSeller}>+ Add Crew/Artist</button>
+        {syncMsg && (
+          <span className={"sync-status " + (syncOk === true ? "ok" : syncOk === false ? "err" : "")}>
+            {syncMsg}
+          </span>
+        )}
+      </div>
+
+      <div className="tabs">
+        {sellers.map(s => (
+          <div
+            key={s}
+            className={"tab " + (tab === s ? "active" : "")}
+            onClick={() => setTab(s)}
+          >
+            {s}
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        <h3>Add Sale — {tab}</h3>
+        <form className="add-form" onSubmit={addSale}>
+          <input
+            type="text"
+            placeholder="Product (e.g. Lighter)"
+            value={product}
+            onChange={e => setProduct(e.target.value)}
+          />
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Amount"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+          />
+          <button className="btn primary" type="submit">Add</button>
+        </form>
+        <div className="chips">
+          {state.products.map(p => (
+            <div key={p} className="chip" onClick={() => setProduct(p)}>{p}</div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Ledger — {tab}</h3>
+        {salesForTab.length === 0 ? (
+          <div className="empty">No sales logged yet.</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Amount</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {salesForTab.map(s => (
+                <tr key={s.id}>
+                  <td>{s.product}</td>
+                  <td>${Number(s.amount).toFixed(2)}</td>
+                  <td>
+                    {s.source === "square"
+                      ? <span className="badge square">Square</span>
+                      : "Manual"}
+                  </td>
+                  <td>
+                    <span className={"badge " + (s.paid ? "paid" : "unpaid")}>
+                      {s.paid ? "Paid" : "Unpaid"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="row-actions">
+                      <button className="icon-btn" onClick={() => togglePaid(s.id)}>
+                        {s.paid ? "Mark Unpaid" : "Mark Paid"}
+                      </button>
+                      <button className="icon-btn" onClick={() => removeSale(s.id)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className="totals">
+          <span>Total: <b>${totals.total.toFixed(2)}</b></span>
+          <span>Paid: <b>${totals.paid.toFixed(2)}</b></span>
+          <span>Owed: <b>${totals.unpaid.toFixed(2)}</b></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
