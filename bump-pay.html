@@ -1,1025 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Bump Pay — Fat Patties</title>
-<style>
-  html, body { margin: 0; padding: 0; background: #121110; }
-  #root { min-height: 100vh; }
-</style>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body>
-<div id="root"></div>
-
-<script>
-  // Storage adapter: uses the Claude-artifact window.storage API when present
-  // (e.g. if this file is ever re-opened inside a Claude artifact preview),
-  // otherwise falls back to the browser's localStorage so data persists
-  // permanently on this device once deployed to a real URL.
-  if (!window.storage) {
-    window.storage = {
-      async get(key) {
-        try {
-          const v = localStorage.getItem(key);
-          return v === null ? null : { key, value: v, shared: false };
-        } catch (e) { return null; }
-      },
-      async set(key, value) {
-        try {
-          localStorage.setItem(key, value);
-          return { key, value, shared: false };
-        } catch (e) { return null; }
-      },
-      async delete(key) {
-        try {
-          localStorage.removeItem(key);
-          return { key, deleted: true, shared: false };
-        } catch (e) { return null; }
-      },
-      async list(prefix) {
-        try {
-          const keys = Object.keys(localStorage).filter(k => !prefix || k.startsWith(prefix));
-          return { keys, prefix, shared: false };
-        } catch (e) { return null; }
-      }
-    };
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --panel: #141414;
+    --panel2: #1c1c1c;
+    --gold: #e0a63a;
+    --gold-dim: #9c7527;
+    --bone: #ece5d8;
+    --line: #2a2a2a;
+    --red: #c0392b;
+    --green: #3fae5c;
   }
-</script>
-
-<script type="text/babel">
-  const { useState, useEffect, useCallback } = React;
-
-  // Minimal inline icon set (replaces lucide-react, which needs a bundler).
-  function Icon({ char, size = 14, style = {} }) {
-    return (
-      <span style={{
-        fontSize: size, lineHeight: 1, display: "inline-flex",
-        alignItems: "center", justifyContent: "center", ...style
-      }}>{char}</span>
-    );
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--bone);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
-  const Plus = (p) => <Icon char="+" {...p} />;
-  const Check = (p) => <Icon char="✓" {...p} />;
-  const Clock = (p) => <Icon char="◷" {...p} />;
-  const Trash2 = (p) => <Icon char="🗑" {...p} />;
-  const ChevronDown = (p) => <Icon char="⌄" {...p} />;
-  const DollarSign = (p) => <Icon char="$" {...p} />;
-  const Package = (p) => <Icon char="▪" {...p} />;
-  const Copy = (p) => <Icon char="⧉" {...p} />;
-  const Mail = (p) => <Icon char="✉" {...p} />;
-  const MessageSquare = (p) => <Icon char="💬" {...p} />;
-  const CheckCheck = (p) => <Icon char="✓✓" {...p} />;
+  h1, h2, h3 { font-family: 'Anton', Impact, sans-serif; letter-spacing: 0.5px; }
+  #root { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
 
-
-const STORAGE_KEY = "bumppay:sellers";
-
-const uid = () => Math.random().toString(36).slice(2, 10);
-
-const emptySeller = (name, type) => ({
-  id: uid(),
-  name,
-  type, // 'crew' | 'artist'
-  sales: [],
-  products: [], // {id, name, price}
-});
-
-// First-run seed: your weekend table sellers, each with the mixtape/lighter
-// product ready to go. Edit the price for each person under
-// "Manage saved products" on their card — every seller's price is independent.
-const seedSellers = () => [
-  {
-    id: uid(),
-    name: "Dennis",
-    type: "crew",
-    sales: [],
-    products: [
-      { id: uid(), name: "Lighter", price: 10 },
-      { id: uid(), name: "Fat Patties Hot Wheels", price: 10 },
-    ],
-  },
-  {
-    id: uid(),
-    name: "DJ Punch",
-    type: "crew",
-    sales: [],
-    products: [{ id: uid(), name: "Naptown Legends Mixtape Series", price: 0 }],
-  },
-  {
-    id: uid(),
-    name: "Blue",
-    type: "crew",
-    sales: [],
-    products: [{ id: uid(), name: "Naptown Legends Mixtape Series", price: 0 }],
-  },
-  {
-    id: uid(),
-    name: "Hooty",
-    type: "crew",
-    sales: [],
-    products: [{ id: uid(), name: "Naptown Legends Mixtape Series", price: 0 }],
-  },
-];
-
-function BumpPay() {
-  const [sellers, setSellers] = useState(null); // null = loading
-  const [tab, setTab] = useState("crew");
-  const [openId, setOpenId] = useState(null);
-  const [addingSeller, setAddingSeller] = useState(false);
-  const [newSellerName, setNewSellerName] = useState("");
-  const [saleDrafts, setSaleDrafts] = useState({}); // sellerId -> {productId, item, unitPrice, qty}
-  const [productDrafts, setProductDrafts] = useState({}); // sellerId -> {name, price}
-  const [managingProducts, setManagingProducts] = useState(null); // sellerId or null
-  const [saveError, setSaveError] = useState(false);
-  const [copiedId, setCopiedId] = useState(null);
-
-  // load
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await window.storage.get(STORAGE_KEY, false);
-        if (res) {
-          setSellers(JSON.parse(res.value));
-        } else {
-          const seeded = seedSellers();
-          setSellers(seeded);
-          try {
-            await window.storage.set(STORAGE_KEY, JSON.stringify(seeded), false);
-          } catch {
-            // seed still shows even if the initial save fails; next edit will retry
-          }
-        }
-      } catch {
-        setSellers(seedSellers());
-      }
-    })();
-  }, []);
-
-  const persist = useCallback(async (next) => {
-    setSellers(next);
-    try {
-      const res = await window.storage.set(STORAGE_KEY, JSON.stringify(next), false);
-      setSaveError(!res);
-    } catch {
-      setSaveError(true);
-    }
-  }, []);
-
-  if (sellers === null) {
-    return (
-      <div style={styles.page}>
-        <div style={styles.loading}>loading ledger…</div>
-      </div>
-    );
+  .header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
   }
+  .header h1 { color: var(--gold); font-size: 28px; margin: 0; text-transform: uppercase; }
+  .header .sub { color: #888; font-size: 12px; }
 
-  const visible = sellers.filter((s) => s.type === tab);
+  .sync-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    background: var(--panel2);
+    color: var(--bone);
+    border: 1px solid var(--line);
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn:hover { border-color: var(--gold-dim); }
+  .btn.primary {
+    background: var(--gold);
+    color: #111;
+    border: none;
+  }
+  .btn.primary:hover { background: #f0b64a; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  const totalOwed = sellers.reduce(
-    (sum, s) => sum + s.sales.filter((sale) => !sale.paid).reduce((a, b) => a + b.amount, 0),
-    0
-  );
-  const totalPaidOut = sellers.reduce(
-    (sum, s) => sum + s.sales.filter((sale) => sale.paid).reduce((a, b) => a + b.amount, 0),
-    0
-  );
+  .sync-status {
+    font-size: 13px;
+    color: #999;
+  }
+  .sync-status.ok { color: var(--green); }
+  .sync-status.err { color: #e07a5f; }
 
-  const addSeller = () => {
-    const name = newSellerName.trim();
-    if (!name) return;
-    persist([...sellers, emptySeller(name, tab)]);
-    setNewSellerName("");
-    setAddingSeller(false);
-  };
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    padding: 10px 18px;
+    cursor: pointer;
+    color: #888;
+    font-weight: 600;
+    font-size: 14px;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
 
-  const removeSeller = (id) => {
-    persist(sellers.filter((s) => s.id !== id));
-  };
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card h3 { margin: 0 0 10px; color: var(--gold); font-size: 16px; text-transform: uppercase; }
 
-  const addSale = (sellerId) => {
-    const draft = saleDrafts[sellerId];
-    const unitPrice = parseFloat(draft?.unitPrice);
-    const qty = parseInt(draft?.qty, 10) || 1;
-    const itemName = draft?.item?.trim();
-    if (!itemName || !unitPrice || unitPrice <= 0) return;
-    const amount = unitPrice * qty;
-    const label = qty > 1 ? `${itemName} ×${qty}` : itemName;
-    const next = sellers.map((s) =>
-      s.id === sellerId
-        ? {
-            ...s,
-            sales: [
-              ...s.sales,
-              {
-                id: uid(),
-                item: label,
-                amount,
-                date: new Date().toISOString().slice(0, 10),
-                paid: false,
-              },
-            ],
-          }
-        : s
-    );
-    persist(next);
-    setSaleDrafts((d) => ({ ...d, [sellerId]: { productId: "", item: "", unitPrice: "", qty: "1" } }));
-  };
-
-  const addProduct = (sellerId) => {
-    const draft = productDrafts[sellerId];
-    const price = parseFloat(draft?.price);
-    const name = draft?.name?.trim();
-    if (!name || !price || price <= 0) return;
-    const next = sellers.map((s) =>
-      s.id === sellerId
-        ? { ...s, products: [...(s.products || []), { id: uid(), name, price }] }
-        : s
-    );
-    persist(next);
-    setProductDrafts((d) => ({ ...d, [sellerId]: { name: "", price: "" } }));
-  };
-
-  const removeProduct = (sellerId, productId) => {
-    const next = sellers.map((s) =>
-      s.id === sellerId
-        ? { ...s, products: (s.products || []).filter((p) => p.id !== productId) }
-        : s
-    );
-    persist(next);
-  };
-
-  const pickProduct = (sellerId, productId) => {
-    const s = sellers.find((se) => se.id === sellerId);
-    const product = (s?.products || []).find((p) => p.id === productId);
-    setSaleDrafts((d) => ({
-      ...d,
-      [sellerId]: {
-        ...(d[sellerId] || {}),
-        productId,
-        item: product ? product.name : "",
-        unitPrice: product ? String(product.price) : "",
-        qty: d[sellerId]?.qty || "1",
-      },
-    }));
-  };
-
-  const togglePaid = (sellerId, saleId) => {
-    const next = sellers.map((s) =>
-      s.id === sellerId
-        ? {
-            ...s,
-            sales: s.sales.map((sale) =>
-              sale.id === saleId ? { ...sale, paid: !sale.paid } : sale
-            ),
-          }
-        : s
-    );
-    persist(next);
-  };
-
-  const removeSale = (sellerId, saleId) => {
-    const next = sellers.map((s) =>
-      s.id === sellerId ? { ...s, sales: s.sales.filter((sale) => sale.id !== saleId) } : s
-    );
-    persist(next);
-  };
-
-  const sellerOwed = (s) =>
-    s.sales.filter((sale) => !sale.paid).reduce((a, b) => a + b.amount, 0);
-
-  const buildSummary = (s) => {
-    const unpaid = s.sales.filter((sale) => !sale.paid);
-    const lines = unpaid.map((sale) => `${sale.date} — ${sale.item} — $${sale.amount.toFixed(2)}`);
-    const total = unpaid.reduce((a, b) => a + b.amount, 0);
-    return [
-      `Payout summary for ${s.name}`,
-      "",
-      ...lines,
-      "",
-      `Total owed: $${total.toFixed(2)}`,
-    ].join("\n");
-  };
-
-  const copySummary = async (s) => {
-    const text = buildSummary(s);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(s.id);
-      setTimeout(() => setCopiedId(null), 1800);
-    } catch {
-      setCopiedId(null);
-    }
-  };
-
-  const emailSummary = (s) => {
-    const subject = encodeURIComponent(`Payout summary — ${s.name}`);
-    const body = encodeURIComponent(buildSummary(s));
-    window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
-  };
-
-  const textSummary = (s) => {
-    const body = encodeURIComponent(buildSummary(s));
-    window.open(`sms:?&body=${body}`, "_blank");
-  };
-
-  return (
-    <div style={styles.page}>
-      <style>{fontImport}</style>
-
-      <header style={styles.header}>
-        <div style={styles.eyebrow}>FAT PATTIES · NAPTOWN</div>
-        <h1 style={styles.title}>
-          BUMP <span style={styles.titleAccent}>PAY</span>
-        </h1>
-        <div style={styles.subtitle}>merch payout ledger</div>
-      </header>
-
-      <div style={styles.summaryRow}>
-        <div style={styles.summaryCard}>
-          <div style={styles.summaryLabel}>Owed out</div>
-          <div style={{ ...styles.summaryValue, color: COLORS.unpaid }}>
-            ${totalOwed.toFixed(2)}
-          </div>
-        </div>
-        <div style={styles.summaryCard}>
-          <div style={styles.summaryLabel}>Paid out</div>
-          <div style={{ ...styles.summaryValue, color: COLORS.paid }}>
-            ${totalPaidOut.toFixed(2)}
-          </div>
-        </div>
-      </div>
-
-      <div style={styles.tabs}>
-        {["crew", "artist"].map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              ...styles.tabBtn,
-              color: tab === t ? COLORS.gold : COLORS.muted,
-              borderBottomColor: tab === t ? COLORS.gold : "transparent",
-            }}
-          >
-            {t === "crew" ? "Crew" : "Artists"}
-          </button>
-        ))}
-      </div>
-
-      <div style={styles.list}>
-        {visible.length === 0 && !addingSeller && (
-          <div style={styles.empty}>
-            No {tab === "crew" ? "crew" : "artists"} on the board yet. Add one below.
-          </div>
-        )}
-
-        {visible.map((s) => {
-          const owed = sellerOwed(s);
-          const isOpen = openId === s.id;
-          const draft = saleDrafts[s.id] || { productId: "", item: "", unitPrice: "", qty: "1" };
-          const products = s.products || [];
-          const isManaging = managingProducts === s.id;
-          const computedTotal =
-            (parseFloat(draft.unitPrice) || 0) * (parseInt(draft.qty, 10) || 1);
-          return (
-            <div key={s.id} style={styles.card}>
-              <button
-                style={styles.cardHead}
-                onClick={() => setOpenId(isOpen ? null : s.id)}
-              >
-                <div style={styles.cardHeadLeft}>
-                  <div style={styles.sellerName}>{s.name}</div>
-                  <div style={styles.saleCount}>
-                    {s.sales.length} sale{s.sales.length === 1 ? "" : "s"}
-                  </div>
-                </div>
-                <div style={styles.cardHeadRight}>
-                  <div
-                    style={{
-                      ...styles.owedTag,
-                      color: owed > 0 ? COLORS.unpaid : COLORS.muted,
-                      borderColor: owed > 0 ? COLORS.unpaid : COLORS.line,
-                    }}
-                  >
-                    {owed > 0 ? `$${owed.toFixed(2)} owed` : "settled"}
-                  </div>
-                  <ChevronDown
-                    size={18}
-                    style={{
-                      transform: isOpen ? "rotate(180deg)" : "none",
-                      transition: "transform .15s",
-                      color: COLORS.muted,
-                    }}
-                  />
-                </div>
-              </button>
-
-              {isOpen && (
-                <div style={styles.cardBody}>
-                  {s.sales.length > 0 && (
-                    <div style={styles.saleList}>
-                      {s.sales.map((sale) => (
-                        <div key={sale.id} style={styles.saleRow}>
-                          <div style={styles.saleInfo}>
-                            <span style={styles.saleItem}>{sale.item}</span>
-                            <span style={styles.saleDate}>{sale.date}</span>
-                          </div>
-                          <div style={styles.saleRight}>
-                            <span style={styles.saleAmount}>${sale.amount.toFixed(2)}</span>
-                            <button
-                              onClick={() => togglePaid(s.id, sale.id)}
-                              style={{
-                                ...styles.paidPill,
-                                background: sale.paid ? COLORS.paidBg : COLORS.unpaidBg,
-                                color: sale.paid ? COLORS.paid : COLORS.unpaid,
-                              }}
-                            >
-                              {sale.paid ? <Check size={12} /> : <Clock size={12} />}
-                              {sale.paid ? "paid" : "unpaid"}
-                            </button>
-                            <button
-                              onClick={() => removeSale(s.id, sale.id)}
-                              style={styles.iconBtn}
-                              aria-label="Remove sale"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={styles.divider} />
-
-                  {products.length > 0 && (
-                    <div style={styles.productPicker}>
-                      {products.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => pickProduct(s.id, p.id)}
-                          style={{
-                            ...styles.productChip,
-                            ...(draft.productId === p.id ? styles.productChipActive : {}),
-                          }}
-                        >
-                          {p.name} · ${p.price.toFixed(2)}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() =>
-                          setSaleDrafts((d) => ({
-                            ...d,
-                            [s.id]: { productId: "", item: "", unitPrice: "", qty: "1" },
-                          }))
-                        }
-                        style={{
-                          ...styles.productChip,
-                          ...(draft.productId === "" ? styles.productChipActive : {}),
-                        }}
-                      >
-                        Custom
-                      </button>
-                    </div>
-                  )}
-
-                  <div style={styles.addSaleRow}>
-                    <div style={styles.inputWrap}>
-                      <Package size={14} style={styles.inputIcon} />
-                      <input
-                        placeholder="item sold"
-                        value={draft.item}
-                        onChange={(e) =>
-                          setSaleDrafts((d) => ({
-                            ...d,
-                            [s.id]: { ...draft, productId: "", item: e.target.value },
-                          }))
-                        }
-                        style={styles.input}
-                      />
-                    </div>
-                    <div style={{ ...styles.inputWrap, maxWidth: 84 }}>
-                      <DollarSign size={14} style={styles.inputIcon} />
-                      <input
-                        placeholder="price"
-                        inputMode="decimal"
-                        value={draft.unitPrice}
-                        onChange={(e) =>
-                          setSaleDrafts((d) => ({
-                            ...d,
-                            [s.id]: { ...draft, productId: "", unitPrice: e.target.value },
-                          }))
-                        }
-                        onKeyDown={(e) => e.key === "Enter" && addSale(s.id)}
-                        style={styles.input}
-                      />
-                    </div>
-                    <div style={{ ...styles.inputWrap, maxWidth: 60 }}>
-                      <input
-                        placeholder="qty"
-                        inputMode="numeric"
-                        value={draft.qty}
-                        onChange={(e) =>
-                          setSaleDrafts((d) => ({
-                            ...d,
-                            [s.id]: { ...draft, qty: e.target.value },
-                          }))
-                        }
-                        onKeyDown={(e) => e.key === "Enter" && addSale(s.id)}
-                        style={{ ...styles.input, textAlign: "center" }}
-                      />
-                    </div>
-                    <button style={styles.addBtn} onClick={() => addSale(s.id)}>
-                      Add
-                    </button>
-                  </div>
-
-                  {computedTotal > 0 && (
-                    <div style={styles.computedTotal}>
-                      Total: ${computedTotal.toFixed(2)}
-                      {parseInt(draft.qty, 10) > 1 ? ` (${draft.qty} × $${draft.unitPrice})` : ""}
-                    </div>
-                  )}
-
-                  <button
-                    style={styles.manageProductsToggle}
-                    onClick={() => setManagingProducts(isManaging ? null : s.id)}
-                  >
-                    {isManaging ? "Done managing products" : "Manage saved products"}
-                  </button>
-
-                  {isManaging && (
-                    <div style={styles.productManager}>
-                      {products.map((p) => (
-                        <div key={p.id} style={styles.productManagerRow}>
-                          <span>{p.name} — ${p.price.toFixed(2)}</span>
-                          <button
-                            onClick={() => removeProduct(s.id, p.id)}
-                            style={styles.iconBtn}
-                            aria-label="Remove product"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      ))}
-                      <div style={styles.addSaleRow}>
-                        <div style={styles.inputWrap}>
-                          <input
-                            placeholder="product name"
-                            value={productDrafts[s.id]?.name || ""}
-                            onChange={(e) =>
-                              setProductDrafts((d) => ({
-                                ...d,
-                                [s.id]: { ...(d[s.id] || {}), name: e.target.value },
-                              }))
-                            }
-                            style={styles.input}
-                          />
-                        </div>
-                        <div style={{ ...styles.inputWrap, maxWidth: 84 }}>
-                          <input
-                            placeholder="price"
-                            inputMode="decimal"
-                            value={productDrafts[s.id]?.price || ""}
-                            onChange={(e) =>
-                              setProductDrafts((d) => ({
-                                ...d,
-                                [s.id]: { ...(d[s.id] || {}), price: e.target.value },
-                              }))
-                            }
-                            onKeyDown={(e) => e.key === "Enter" && addProduct(s.id)}
-                            style={styles.input}
-                          />
-                        </div>
-                        <button style={styles.addBtn} onClick={() => addProduct(s.id)}>
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {owed > 0 && (
-                    <div style={styles.shareRow}>
-                      <button style={styles.shareBtn} onClick={() => copySummary(s)}>
-                        {copiedId === s.id ? <CheckCheck size={14} /> : <Copy size={14} />}
-                        {copiedId === s.id ? "Copied" : "Copy"}
-                      </button>
-                      <button style={styles.shareBtn} onClick={() => textSummary(s)}>
-                        <MessageSquare size={14} />
-                        Text
-                      </button>
-                      <button style={styles.shareBtn} onClick={() => emailSummary(s)}>
-                        <Mail size={14} />
-                        Email
-                      </button>
-                    </div>
-                  )}
-
-                  <button style={styles.removeSellerBtn} onClick={() => removeSeller(s.id)}>
-                    Remove {s.name} from board
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {addingSeller ? (
-          <div style={styles.newSellerRow}>
-            <input
-              autoFocus
-              placeholder={tab === "crew" ? "worker name" : "artist name"}
-              value={newSellerName}
-              onChange={(e) => setNewSellerName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addSeller()}
-              style={styles.input}
-            />
-            <button style={styles.addBtn} onClick={addSeller}>
-              Add
-            </button>
-            <button
-              style={styles.cancelBtn}
-              onClick={() => {
-                setAddingSeller(false);
-                setNewSellerName("");
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button style={styles.addSellerBtn} onClick={() => setAddingSeller(true)}>
-            <Plus size={16} />
-            Add {tab === "crew" ? "worker" : "artist"}
-          </button>
-        )}
-      </div>
-
-      {saveError && (
-        <div style={styles.saveError}>Couldn't save — check connection and try again.</div>
-      )}
-
-      <div style={styles.footNote}>Data is saved to this device only.</div>
-    </div>
-  );
-}
-
-const COLORS = {
-  bg: "#121110",
-  surface: "#1b1916",
-  surfaceRaised: "#221f1b",
-  line: "#332f28",
-  gold: "#e0a63a",
-  goldDim: "#8a6a2e",
-  text: "#f3ede0",
-  muted: "#94897a",
-  unpaid: "#d97a55",
-  unpaidBg: "rgba(217,122,85,0.12)",
-  paid: "#7fae82",
-  paidBg: "rgba(127,174,130,0.12)",
-};
-
-const fontImport = `
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap');
-`;
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: COLORS.bg,
-    color: COLORS.text,
-    fontFamily: "'Inter', sans-serif",
-    padding: "28px 18px 60px",
-    maxWidth: 480,
-    margin: "0 auto",
-    boxSizing: "border-box",
-  },
-  loading: {
-    color: COLORS.muted,
-    textAlign: "center",
-    paddingTop: 80,
-    fontSize: 14,
-  },
-  header: {
-    marginBottom: 24,
-    borderBottom: `1px solid ${COLORS.line}`,
-    paddingBottom: 18,
-  },
-  eyebrow: {
-    fontSize: 11,
-    letterSpacing: "0.18em",
-    color: COLORS.goldDim,
-    fontWeight: 600,
-    marginBottom: 6,
-  },
-  title: {
-    fontFamily: "'Anton', sans-serif",
-    fontWeight: 400,
-    fontSize: 40,
-    letterSpacing: "0.01em",
-    margin: 0,
-    lineHeight: 1,
-  },
-  titleAccent: { color: COLORS.gold },
-  subtitle: {
-    fontSize: 13,
-    color: COLORS.muted,
-    marginTop: 6,
-  },
-  summaryRow: {
-    display: "flex",
-    gap: 10,
-    marginBottom: 20,
-  },
-  summaryCard: {
-    flex: 1,
-    background: COLORS.surface,
-    border: `1px solid ${COLORS.line}`,
-    borderRadius: 10,
-    padding: "14px 16px",
-  },
-  summaryLabel: {
-    fontSize: 11,
-    color: COLORS.muted,
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    marginBottom: 6,
-  },
-  summaryValue: {
-    fontFamily: "'Anton', sans-serif",
-    fontSize: 24,
-    fontWeight: 400,
-  },
-  tabs: {
-    display: "flex",
-    gap: 20,
-    marginBottom: 16,
-    borderBottom: `1px solid ${COLORS.line}`,
-  },
-  tabBtn: {
-    background: "none",
-    border: "none",
-    borderBottom: "2px solid transparent",
-    padding: "8px 2px 12px",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    fontFamily: "'Inter', sans-serif",
-  },
-  list: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
-  empty: {
-    color: COLORS.muted,
-    fontSize: 13,
-    padding: "20px 4px",
-    textAlign: "center",
-    border: `1px dashed ${COLORS.line}`,
-    borderRadius: 10,
-  },
-  card: {
-    background: COLORS.surface,
-    border: `1px solid ${COLORS.line}`,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  cardHead: {
-    width: "100%",
-    background: "none",
-    border: "none",
-    padding: "14px 16px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    cursor: "pointer",
-    color: COLORS.text,
-    fontFamily: "'Inter', sans-serif",
-  },
-  cardHeadLeft: { textAlign: "left" },
-  sellerName: { fontSize: 15, fontWeight: 700 },
-  saleCount: { fontSize: 12, color: COLORS.muted, marginTop: 2 },
-  cardHeadRight: { display: "flex", alignItems: "center", gap: 10 },
-  owedTag: {
-    fontSize: 11,
-    fontWeight: 600,
-    border: "1px solid",
-    borderRadius: 20,
-    padding: "3px 10px",
-  },
-  cardBody: {
-    padding: "0 16px 16px",
-    borderTop: `1px dashed ${COLORS.line}`,
-  },
-  saleList: {
-    display: "flex",
-    flexDirection: "column",
-    marginTop: 12,
-  },
-  saleRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "8px 0",
-    borderBottom: `1px solid ${COLORS.line}`,
-  },
-  saleInfo: { display: "flex", flexDirection: "column", gap: 2 },
-  saleItem: { fontSize: 13, fontWeight: 500 },
-  saleDate: { fontSize: 11, color: COLORS.muted },
-  saleRight: { display: "flex", alignItems: "center", gap: 8 },
-  saleAmount: { fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums" },
-  paidPill: {
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-    border: "none",
-    borderRadius: 20,
-    padding: "4px 9px",
-    fontSize: 11,
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-  iconBtn: {
-    background: "none",
-    border: "none",
-    color: COLORS.muted,
-    cursor: "pointer",
-    padding: 4,
-    display: "flex",
-  },
-  divider: { height: 1, background: COLORS.line, margin: "12px 0" },
-  addSaleRow: {
-    display: "flex",
-    gap: 8,
-    alignItems: "center",
-  },
-  inputWrap: {
-    flex: 1,
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    background: COLORS.surfaceRaised,
-    border: `1px solid ${COLORS.line}`,
-    borderRadius: 8,
-    padding: "8px 10px",
-  },
-  inputIcon: { color: COLORS.muted, flexShrink: 0 },
-  input: {
-    background: "none",
-    border: "none",
-    outline: "none",
-    color: COLORS.text,
-    fontSize: 13,
-    width: "100%",
-    fontFamily: "'Inter', sans-serif",
-  },
-  addBtn: {
-    background: COLORS.gold,
-    color: "#1a1508",
-    border: "none",
-    borderRadius: 8,
-    padding: "9px 14px",
-    fontSize: 13,
-    fontWeight: 700,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
-  cancelBtn: {
-    background: "none",
-    border: `1px solid ${COLORS.line}`,
-    color: COLORS.muted,
-    borderRadius: 8,
-    padding: "9px 12px",
-    fontSize: 13,
-    cursor: "pointer",
-  },
-  shareRow: {
-    display: "flex",
-    gap: 8,
-    marginTop: 14,
-  },
-  shareBtn: {
-    flex: 1,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    background: COLORS.surfaceRaised,
-    border: `1px solid ${COLORS.line}`,
-    color: COLORS.text,
-    borderRadius: 8,
-    padding: "8px 6px",
-    fontSize: 12,
-    fontWeight: 600,
-    cursor: "pointer",
-    fontFamily: "'Inter', sans-serif",
-  },
-  productPicker: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 12,
-  },
-  productChip: {
-    background: COLORS.surfaceRaised,
-    border: `1px solid ${COLORS.line}`,
-    color: COLORS.muted,
-    borderRadius: 20,
-    padding: "5px 11px",
-    fontSize: 11,
-    fontWeight: 600,
-    cursor: "pointer",
-    fontFamily: "'Inter', sans-serif",
-  },
-  productChipActive: {
-    background: "rgba(224,166,58,0.12)",
-    border: `1px solid ${COLORS.gold}`,
-    color: COLORS.gold,
-  },
-  computedTotal: {
-    fontSize: 11,
-    color: COLORS.muted,
-    marginTop: 6,
-    textAlign: "right",
-  },
-  manageProductsToggle: {
-    background: "none",
-    border: "none",
-    color: COLORS.goldDim,
-    fontSize: 11,
-    marginTop: 10,
-    cursor: "pointer",
-    padding: 0,
-    textDecoration: "underline",
-  },
-  productManager: {
-    marginTop: 10,
-    padding: 10,
-    background: COLORS.surfaceRaised,
-    border: `1px solid ${COLORS.line}`,
-    borderRadius: 8,
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
-  productManagerRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: 12,
-    padding: "2px 0",
-  },
-  removeSellerBtn: {
-    background: "none",
-    border: "none",
-    color: COLORS.unpaid,
-    fontSize: 11,
-    marginTop: 12,
-    cursor: "pointer",
-    padding: 0,
-    opacity: 0.75,
-  },
-  newSellerRow: {
-    display: "flex",
-    gap: 8,
-    alignItems: "center",
-    background: COLORS.surface,
-    border: `1px solid ${COLORS.line}`,
-    borderRadius: 10,
-    padding: 12,
-  },
-  addSellerBtn: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    background: "none",
-    border: `1px dashed ${COLORS.goldDim}`,
-    color: COLORS.gold,
-    borderRadius: 10,
-    padding: "12px",
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-  saveError: {
-    marginTop: 16,
-    fontSize: 12,
-    color: COLORS.unpaid,
-    textAlign: "center",
-  },
-  footNote: {
-    marginTop: 24,
-    fontSize: 11,
-    color: COLORS.muted,
-    textAlign: "center",
-  },
-};
-
-  ReactDOM.createRoot(document.getElementById('root')).render(<BumpPay />);
-</script>
-</body>
-</html>
+  .add-form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .add-form input, .add-form select {
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    color: var(--bone);
+    padding: 8px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  .add-form input[type=text] { flex: 1; min-width: 120px; }
+  .add-form input[type=number]
