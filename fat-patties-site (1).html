@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fat Patties — Naptown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+
+  :root {
+    --bg: #121110;
+    --surface: #1b1916;
+    --surface-raised: #221f1b;
+    --line: #332f28;
+    --gold: #e0a63a;
+    --gold-dim: #8a6a2e;
+    --text: #f3ede0;
+    --muted: #94897a;
+    --rust: #d97a55;
+    --green: #7fae82;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  .display { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  a { color: inherit; text-decoration: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* ---------- NAV ---------- */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: rgba(18, 17, 16, 0.88);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-logo { font-size: 15px; letter-spacing: 0.06em; font-weight: 800; }
+  .nav-logo span { color: var(--gold); }
+  .nav-links { display: flex; gap: 26px; font-size: 13px; color: var(--muted); }
+  .nav-links a:hover { color: var(--gold); }
+  .nav-links { display: none; }
+  @media (min-width: 720px) { .nav-links { display: flex; } }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    position: relative;
+    min-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 100px 20px 60px;
+    overflow: hidden;
+  }
+
+  .vinyl {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 620px;
+    height: 620px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background:
+      repeating-radial-gradient(circle at center,
+        #1a1815 0px, #1a1815 3px,
+        #201d19 3px, #201d19 6px);
+    opacity: 0.55;
+    animation: spin 40s linear infinite;
+    pointer-events: none;
+  }
+  .vinyl::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 46px; height: 46px;
+    transform: translate(-50%, -50%);
+    background: var(--bg);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px var(--gold-dim);
+  }
+  @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+  .hero-eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.28em;
+    color: var(--gold-dim);
+    font-weight: 700;
+    margin-bottom: 18px;
+    z-index: 1;
+  }
+  .hero h1 {
+    font-size: clamp(48px, 10vw, 108px);
+    line-height: 0.92;
+    z-index: 1;
+    max-width: 920px;
+  }
+  .hero h1 .accent { color: var(--gold); }
+  .hero-sub {
+    margin-top: 22px;
+    font-size: 15px;
+    color: var(--muted);
+    max-width: 480px;
+    z-index: 1;
+  }
+  .hero-ctas {
+    margin-top: 34px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    z-index: 1;
+  }
+  .btn {
+    padding: 13px 26px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--gold); color: #1a1508; }
+  .btn-primary:hover { background: #eeb654; }
+  .btn-ghost { border-color: var(--line); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--gold-dim); }
+
+  /* ---------- SECTION SHELL ---------- */
+  .section { padding: 90px 20px; max-width: 980px; margin: 0 auto; }
+  .section-head { margin-bottom: 40px; }
+  .section-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--gold-dim);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .section-title { font-size: clamp(32px, 5vw, 46px); }
+  .section-desc { color: var(--muted); font-size: 14px; margin-top: 10px; max-width: 520px; }
+
+  /* ---------- DROPS ---------- */
+  .drop-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 22px 4px;
+    border-bottom: 1px solid var(--line);
+    transition: padding-left 0.15s ease;
+  }
+  .drop-row:hover { padding-left: 10px; border-bottom-color: var(--gold-dim); }
+  .drop-num { font-family: 'JetBrains Mono', monospace; color: var(--gold-dim); font-size: 13px; width: 28px; flex-shrink: 0; }
+  .drop-info { flex: 1; min-width: 0; }
+  .drop-artist { font-size: 15px; font-weight: 700; }
+  .drop-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .drop-tag {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 4px 10px;
+    flex-shrink: 0;
+  }
+  .drop-arrow { color: var(--gold); font-size: 16px; flex-shrink: 0; }
+
+  /* ---------- TOP 20 PREVIEW ---------- */
+  .top20-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+  .top20-tab {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .top20-tab.active { color: var(--gold); border-color: var(--gold-dim); background: rgba(224,166,58,0.08); }
+  .top20-panel { display: none; }
+  .top20-panel.active { display: block; }
+  .t20-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .t20-rank { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--gold); width: 24px; }
+  .t20-track { font-size: 14px; font-weight: 600; flex: 1; }
+  .t20-artist { font-size: 12px; color: var(--muted); }
+  .see-full {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 700;
+    border-bottom: 1px solid var(--gold-dim);
+    padding-bottom: 2px;
+  }
+
+  /* ---------- LIVE STREAM ---------- */
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--rust);
+    margin-bottom: 16px;
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--rust);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(217,122,85,0.5); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(217,122,85,0); }
+  }
+  .live-player {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .live-player iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .live-player-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 20px;
+  }
+  .live-onair { font-size: 13px; color: var(--muted); margin-bottom: 34px; }
+  .live-onair span { color: var(--gold); font-weight: 700; }
+  .schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 10px;
+  }
+  .schedule-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .schedule-card.now { border-color: var(--gold-dim); background: rgba(224,166,58,0.06); }
+  .schedule-day {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--gold-dim);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .schedule-card.now .schedule-day { color: var(--gold); }
+  .schedule-dj { font-size: 14px; font-weight: 700; }
+  .schedule-time { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ---------- MOVIES ---------- */
+  .movie-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+  }
+  .movie-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+  }
+  .movie-card:hover { transform: translateY(-4px); border-color: var(--gold-dim); }
+  .movie-poster {
+    aspect-ratio: 2/3;
+    width: 100%;
+    background: linear-gradient(155deg, var(--surface-raised), #14120f);
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    padding: 14px;
+  }
+  .movie-poster::before {
+    content: attr(data-runtime);
+    position: absolute;
+    top: 10px; right: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+  .movie-poster::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 10px, rgba(224,166,58,0.03) 10px 11px);
+  }
+  .movie-play {
+    z-index: 1;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: rgba(224,166,58,0.14);
+    border: 1px solid var(--gold-dim);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold);
+    font-size: 12px;
+  }
+  .movie-info { padding: 12px 14px 16px; }
+  .movie-title { font-size: 13px; font-weight: 700; line-height: 1.3; }
+  .movie-genre { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ---------- SPONSOR SLOT ---------- */
+  .sponsor-slot {
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    padding: 26px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .sponsor-slot.filled {
+    border-style: solid;
+    border-color: var(--gold-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+
+  /* ---------- SPONSOR GRID (up to 4 slots) ---------- */
+  .sponsor-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 700px) {
+    .sponsor-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .sponsor-card {
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    padding: 20px 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 110px;
+  }
+  .sponsor-card.filled {
+    border-style: solid;
+    border-color: var(--gold-dim);
+    color: var(--fg);
+  }
+  .sponsor-card img { max-width: 100%; max-height: 48px; margin-bottom: 8px; object-fit: contain; }
+  .sponsor-card .sponsor-name { color: var(--gold); font-weight: 700; font-size: 12px; margin-top: 4px; }
+  .sponsor-card .sponsor-tag { font-size: 10px; letter-spacing: 0.08em; color: var(--muted); }
+
+  /* ---------- FOOTER / AR ---------- */
+  .footer {
+    padding: 70px 20px 40px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+  }
+  .truck {
+    width: 220px;
+    margin: 0 auto 24px;
+    cursor: pointer;
+  }
+  .truck svg { width: 100%; display: block; }
+  .truck-label {
+    margin-top: 10px;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--gold-dim);
+  }
+  .footer-links { display: flex; gap: 20px; justify-content: center; margin-top: 30px; font-size: 12px; color: var(--muted); }
+  .footer-links a:hover { color: var(--gold); }
+  .footer-copy { margin-top: 30px; font-size: 11px; color: var(--muted); opacity: 0.6; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">FAT <span>PATTIES</span></div>
+  <div class="nav-links">
+    <a href="#live">Live</a>
+    <a href="#drops">Drops</a>
+    <a href="#top20">Top 20</a>
+    <a href="#movies">Movies</a>
+    <a href="#footer">AR Truck</a>
+  </div>
+  <a href="#drops" class="btn btn-ghost" style="padding:8px 16px;">Shop</a>
+</nav>
+
+<section class="hero">
+  <div class="vinyl"></div>
+  <div class="hero-eyebrow">FAT PATTIES · INDIANAPOLIS</div>
+  <h1 class="display">RECORDS. MERCH.<br>THE <span class="accent">CULTURE.</span></h1>
+  <p class="hero-sub">Naptown's phygital record store — new drops, video, and features from the artists shaping the sound of Indy.</p>
+  <div class="hero-ctas">
+    <a href="#drops" class="btn btn-primary">See the drops</a>
+    <a href="#movies" class="btn btn-ghost">Watch features</a>
+  </div>
+</section>
+
+<section class="section" id="live">
+  <div class="section-head">
+    <div class="live-badge"><span class="live-dot"></span>24/7 · 7 DAYS A WEEK</div>
+    <h2 class="section-title display">Naptown Radio</h2>
+    <p class="section-desc">Round-the-clock rotation from the Fat Patties DJ roster.</p>
+  </div>
+  <div class="live-player" id="livePlayer"></div>
+  <div class="live-onair" id="onAirNow"></div>
+  <div class="schedule-grid" id="scheduleGrid"></div>
+</section>
+
+<section class="section" id="drops">
+  <div class="section-head">
+    <div class="section-eyebrow">CURRENT RELEASES</div>
+    <h2 class="section-title display">The Drop</h2>
+    <p class="section-desc">Fresh off the truck. Tap in for the latest from the roster.</p>
+  </div>
+  <div id="dropList"></div>
+</section>
+
+<section class="section" id="top20">
+  <div class="section-head">
+    <div class="section-eyebrow">UPDATED EVERY 2 WEEKS</div>
+    <h2 class="section-title display">Top 20</h2>
+    <p class="section-desc">What's running the block right now — audio and video.</p>
+  </div>
+  <div class="top20-tabs">
+    <button class="top20-tab active" data-tab="artist">Artist</button>
+    <button class="top20-tab" data-tab="video">Video</button>
+  </div>
+  <div class="top20-panel active" data-panel="artist" id="artistPanel"></div>
+  <div class="top20-panel" data-panel="video" id="videoPanel"></div>
+  <a href="#" class="see-full">See full Top 20 →</a>
+</section>
+
+<section class="section" id="movies">
+  <div class="section-head">
+    <div class="section-eyebrow">FEATURE LENGTH</div>
+    <h2 class="section-title display">Movies</h2>
+    <p class="section-desc">Full-length features and documentaries from the Fat Patties camp.</p>
+  </div>
+  <div class="movie-grid" id="movieGrid"></div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">SUPPORTED BY</div>
+    <h2 class="section-title display">Sponsors</h2>
+  </div>
+  <div class="sponsor-grid" id="sponsorGrid"></div>
+</section>
+
+<footer class="footer" id="footer">
+  <a class="truck" href="#" id="truckLink" aria-label="View in AR">
+    <svg viewBox="0 0 220 110" fill="none" stroke="#e0a63a" stroke-width="2.5">
+      <rect x="14" y="30" width="120" height="52" rx="3"/>
+      <path d="M134 46h34l24 20v16h-58z"/>
+      <circle cx="52" cy="90" r="12" fill="#121110"/>
+      <circle cx="176" cy="90" r="12" fill="#121110"/>
+      <text x="72" y="60" fill="#e0a63a" stroke="none" font-family="Anton" font-size="15" text-anchor="middle">FAT</text>
+      <text x="72" y="74" fill="#e0a63a" stroke="none" font-family="Anton" font-size="15" text-anchor="middle">PATTIES</text>
+    </svg>
+  </a>
+  <div class="truck-label">TAP THE TRUCK TO VIEW IT IN AR</div>
+  <div class="footer-links">
+    <a href="#">Instagram</a>
+    <a href="#">TikTok</a>
+    <a href="#">YouTube</a>
+    <a href="#">Contact</a>
+    <a href="#" id="crewLink" style="opacity:0.6;">Crew</a>
+  </div>
+  <div class="footer-copy">© Fat Patties · Naptown</div>
+</footer>
+
+<script>
+  // ===================== CONFIG =====================
+  // Edit everything below to update the site. No other code needs to change.
+  const CONFIG = {
+    live: {
+      // Paste your 24/7 stream embed link here (Mixcloud Live, YouTube Live, or Twitch embed URL).
+      embedUrl: "PASTE_STREAM_EMBED_URL_HERE",
+      // Weekly rotation — edit day, time, and dj for each slot. Add or remove rows as needed.
+      schedule: [
+        { day: "Monday",    time: "6PM – 9PM",  dj: "DJ Don Don" },
+        { day: "Tuesday",   time: "6PM – 9PM",  dj: "DJ World" },
+        { day: "Wednesday", time: "6PM – 9PM",  dj: "DJ Punch" },
+        { day: "Thursday",  time: "6PM – 9PM",  dj: "Lil Steve E" },
+        { day: "Friday",    time: "8PM – 12AM", dj: "K-Roll (Uncle Pooty)" },
+        { day: "Saturday",  time: "8PM – 12AM", dj: "Trill Will" },
+        { day: "Sunday",    time: "6PM – 9PM",  dj: "DJ World" },
+      ],
+    },
+    drops: [
+      { artist: "Jimmy Boatwright", title: "Nothing to Prove", tag: "Spotify", link: "PASTE_LINK_HERE" },
+      { artist: "Jimmy Boatwright", title: "Good Company", tag: "Spotify", link: "PASTE_LINK_HERE" },
+      { artist: "Jimmy Boatwright", title: "Naptown (Do You Feel Me)", tag: "Spotify", link: "PASTE_LINK_HERE" },
+      { artist: "Jimmy Boatwright", title: "Naptown (Do You Feel Me)", tag: "Video", link: "PASTE_LINK_HERE" },
+      { artist: "K-Roll (Uncle Pooty) ft. Drake", title: "Playing Games", tag: "Spotify", link: "PASTE_LINK_HERE" },
+      { artist: "K-Roll & Trill Will", title: "God Walks", tag: "Spotify", link: "PASTE_LINK_HERE" },
+    ],
+    top20: {
+      cycleLabel: "Jul 17 – Jul 31, 2026",
+      artist: [
+        { artist: "Land Life Boy", track: "TBD" },
+        { artist: "Jimmy Boatwright", track: "TBD" },
+        { artist: "DJ Don Don", track: "TBD" },
+        { artist: "DJ World", track: "TBD" },
+        { artist: "Lil Steve E", track: "TBD" },
+      ],
+      video: [
+        { artist: "G-Stak", track: "I Can Smell It" },
+        { artist: "Keylo-G", track: "Out of Bounds" },
+        { artist: "DJ Punch", track: "TBD" },
+        { artist: "DJ Don Don", track: "TBD" },
+        { artist: "DJ World", track: "TBD" },
+      ],
+      fullListUrl: "#",
+    },
+    movies: [
+      { title: "I Dream of Uncle Pooty", genre: "Comedy", runtime: "PASTE_RUNTIME", link: "PASTE_LINK_HERE" },
+    ],
+    // Up to 4 sponsor slots. Leave a slot as null and it shows an open "sponsor spot" card.
+    //   { name: "Brand", logo: "https://your-logo-url", link: "https://..." }
+    sponsors: [ null, null, null, null ],
+    ar: { link: "ar-scan.html" },
+    bumpPay: { link: "bump-pay.html" }, // same-site relative link — no URL to paste in
+  };
+  // ===================================================
+
+  function el(html) {
+    const t = document.createElement('template');
+    t.innerHTML = html.trim();
+    return t.content.firstElementChild;
+  }
+
+  // Live stream player
+  const livePlayer = document.getElementById('livePlayer');
+  if (CONFIG.live.embedUrl && CONFIG.live.embedUrl !== "PASTE_STREAM_EMBED_URL_HERE") {
+    livePlayer.innerHTML = `<iframe src="${CONFIG.live.embedUrl}" allow="autoplay" allowfullscreen></iframe>`;
+  } else {
+    livePlayer.innerHTML = `<div class="live-player-empty">Stream link coming soon — tune in to the schedule below</div>`;
+  }
+
+  // On-air-now + weekly schedule
+  const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const todayName = dayNames[new Date().getDay()];
+  const scheduleGrid = document.getElementById('scheduleGrid');
+  const onAirNow = document.getElementById('onAirNow');
+  const todaySlot = CONFIG.live.schedule.find(s => s.day === todayName);
+  onAirNow.innerHTML = todaySlot
+    ? `On air today: <span>${todaySlot.dj}</span> · ${todaySlot.time}`
+    : `Rotation continues 24/7 — check today's slot below`;
+  CONFIG.live.schedule.forEach(s => {
+    scheduleGrid.appendChild(el(`
+      <div class="schedule-card ${s.day === todayName ? 'now' : ''}">
+        <div class="schedule-day">${s.day}${s.day === todayName ? ' · TODAY' : ''}</div>
+        <div class="schedule-dj">${s.dj}</div>
+        <div class="schedule-time">${s.time}</div>
+      </div>
+    `));
+  });
+
+  // Drops
+  const dropList = document.getElementById('dropList');
+  CONFIG.drops.forEach((d, i) => {
+    dropList.appendChild(el(`
+      <a class="drop-row" href="${d.link}">
+        <span class="drop-num">${String(i + 1).padStart(2, '0')}</span>
+        <span class="drop-info">
+          <div class="drop-artist">${d.title} — ${d.artist}</div>
+          <div class="drop-meta">New release</div>
+        </span>
+        <span class="drop-tag">${d.tag}</span>
+        <span class="drop-arrow">→</span>
+      </a>
+    `));
+  });
+
+  // Top 20
+  const artistPanel = document.getElementById('artistPanel');
+  const videoPanel = document.getElementById('videoPanel');
+  CONFIG.top20.artist.forEach((t, i) => {
+    artistPanel.appendChild(el(`
+      <div class="t20-row">
+        <span class="t20-rank">${i + 1}</span>
+        <span class="t20-track">${t.track}</span>
+        <span class="t20-artist">${t.artist}</span>
+      </div>
+    `));
+  });
+  CONFIG.top20.video.forEach((t, i) => {
+    videoPanel.appendChild(el(`
+      <div class="t20-row">
+        <span class="t20-rank">${i + 1}</span>
+        <span class="t20-track">${t.track}</span>
+        <span class="t20-artist">${t.artist}</span>
+      </div>
+    `));
+  });
+  document.querySelectorAll('.top20-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.top20-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.top20-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelector(`[data-panel="${tab.dataset.tab}"]`).classList.add('active');
+    });
+  });
+  document.querySelector('.see-full').href = CONFIG.top20.fullListUrl;
+
+  // Movies
+  const movieGrid = document.getElementById('movieGrid');
+  CONFIG.movies.forEach(m => {
+    movieGrid.appendChild(el(`
+      <a class="movie-card" href="${m.link}">
+        <div class="movie-poster" data-runtime="${m.runtime}">
+          <div class="movie-play">▶</div>
+        </div>
+        <div class="movie-info">
+          <div class="movie-title">${m.title}</div>
+          <div class="movie-genre">${m.genre}</div>
+        </div>
+      </a>
+    `));
+  });
+
+  // Sponsor grid
+  const sponsorGrid = document.getElementById('sponsorGrid');
+  CONFIG.sponsors.slice(0, 4).forEach((sp) => {
+    const card = document.createElement(sp ? 'a' : 'div');
+    card.className = 'sponsor-card' + (sp ? ' filled' : '');
+    if (sp) {
+      card.href = sp.link || '#';
+      card.target = '_blank';
+      card.rel = 'noopener';
+      card.innerHTML = (sp.logo ? `<img src="${sp.logo}" alt="${sp.name}">` : '')
+        + `<span class="sponsor-name">${sp.name}</span>`;
+    } else {
+      card.innerHTML = `<span class="sponsor-tag">SPONSOR SPOT OPEN</span><span style="margin-top:6px;">Reach out to advertise here</span>`;
+    }
+    sponsorGrid.appendChild(card);
+  });
+
+  document.getElementById('truckLink').href = CONFIG.ar.link;
+  document.getElementById('crewLink').href = CONFIG.bumpPay.link;
+</script>
+
+56b</body>
+</html>
