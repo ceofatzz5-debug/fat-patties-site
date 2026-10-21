@@ -136,6 +136,7 @@
   .badge.paid { background: rgba(63,174,92,0.15); color: var(--green); }
   .badge.unpaid { background: rgba(224,122,95,0.15); color: #e07a5f; }
   .badge.square { background: rgba(224,166,58,0.15); color: var(--gold); }
+  .badge.stripe { background: rgba(130,120,255,0.18); color: #a9a2ff; }
 
   .totals { display: flex; gap: 24px; margin-top: 4px; font-size: 13px; color: #aaa; }
   .totals b { color: var(--gold); }
@@ -163,6 +164,7 @@ const { useState, useEffect, useMemo } = React;
 
 const STORAGE_KEY = "bumpPayLedger_v1";
 const SQUARE_FN_URL = "/.netlify/functions/square-sales";
+const STRIPE_FN_URL = "/.netlify/functions/stripe-sales";
 
 function loadState() {
   try {
@@ -250,45 +252,49 @@ function App() {
     }
   }
 
-  async function syncSquare() {
-    setSyncing(true);
-    setSyncMsg("Pulling last 30 days from Square...");
-    setSyncOk(null);
-    try {
-      const res = await fetch(SQUARE_FN_URL);
-      if (!res.ok) throw new Error("Function returned " + res.status);
-      const data = await res.json();
-      const payments = Array.isArray(data) ? data : (data.payments || []);
+  // Pull sales from Square or Stripe through the private Netlify functions.
+  // Both functions answer { sales: [{ squareId | stripeId, amount, date, ts, item }] }.
+  async function syncFrom(source) {
+    const url = source === "stripe" ? STRIPE_FN_URL : SQUARE_FN_URL;
+    const label = source === "stripe" ? "Stripe" : "Square";
+    const res = await fetch(url);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(label + ": " + ((data.error && (data.error.message || data.error)) || ("error " + res.status)));
+    const list = Array.isArray(data) ? data : (data.sales || data.payments || []);
+    let added = 0;
+    setState(s => {
+      const idKey = source === "stripe" ? "stripePaymentId" : "squarePaymentId";
+      const existing = new Set(s.sales.filter(x => x[idKey]).map(x => x[idKey]));
+      const newOnes = list
+        .map(p => ({
+          extId: source === "stripe" ? p.stripeId : (p.squareId || p.id),
+          amount: p.amount_money ? p.amount_money.amount / 100 : Number(p.amount || 0),
+          item: p.item || p.note || p.description || (label + " Sale"),
+          ts: p.ts || (p.created_at ? new Date(p.created_at).getTime() : (p.date ? new Date(p.date + "T12:00:00").getTime() : Date.now()))
+        }))
+        .filter(p => p.extId && !existing.has(p.extId))
+        .map(p => ({
+          id: uid(), [idKey]: p.extId, seller: "Dennis", product: p.item,
+          amount: p.amount, paid: true, source, ts: p.ts
+        }));
+      added = newOnes.length;
+      return { ...s, sales: [...newOnes, ...s.sales] };
+    });
+    return { label, count: list.length };
+  }
 
-      setState(s => {
-        const existingIds = new Set(
-          s.sales.filter(sale => sale.squarePaymentId).map(sale => sale.squarePaymentId)
-        );
-        const newOnes = payments
-          .filter(p => p.id && !existingIds.has(p.id))
-          .map(p => ({
-            id: uid(),
-            squarePaymentId: p.id,
-            seller: "Dennis",
-            product: (p.note || p.description || "Square Sale"),
-            amount: p.amount_money ? (p.amount_money.amount / 100) : (p.amount || 0),
-            paid: true,
-            source: "square",
-            ts: p.created_at ? new Date(p.created_at).getTime() : Date.now()
-          }));
-        return { ...s, sales: [...newOnes, ...s.sales] };
-      });
-
-      setSyncMsg(
-        (data.added !== undefined ? data.added : "new") + " new sale(s) synced from Square."
-      );
-      setSyncOk(true);
-    } catch (err) {
-      setSyncMsg("Sync failed: " + err.message + ". Check the Netlify function log.");
-      setSyncOk(false);
-    } finally {
-      setSyncing(false);
+  async function sync(which) {
+    setSyncing(true); setSyncOk(null);
+    const sources = which === "all" ? ["square", "stripe"] : [which];
+    setSyncMsg("Pulling the last 30 days from " + sources.map(x => x === "stripe" ? "Stripe" : "Square").join(" and ") + "...");
+    const done = [], failed = [];
+    for (const src of sources) {
+      try { const r = await syncFrom(src); done.push(r.label + ": " + r.count + " sales checked"); }
+      catch (err) { failed.push(err.message); }
     }
+    setSyncMsg([done.length ? done.join(" · ") + ". New ones were added; repeats were skipped." : "", failed.length ? "Didn't sync – " + failed.join(" · ") + ". Check the Netlify function log." : ""].filter(Boolean).join(" "));
+    setSyncOk(failed.length === 0);
+    setSyncing(false);
   }
 
   return (
@@ -299,9 +305,11 @@ function App() {
       </div>
 
       <div className="sync-row">
-        <button className="btn primary" onClick={syncSquare} disabled={syncing}>
-          {syncing ? "Syncing..." : "Sync Square Sales"}
+        <button className="btn primary" onClick={() => sync("all")} disabled={syncing}>
+          {syncing ? "Syncing..." : "Sync Square + Stripe"}
         </button>
+        <button className="btn" onClick={() => sync("square")} disabled={syncing}>Square only</button>
+        <button className="btn" onClick={() => sync("stripe")} disabled={syncing}>Stripe only</button>
         <button className="btn" onClick={addSeller}>+ Add Crew/Artist</button>
         {syncMsg && (
           <span className={"sync-status " + (syncOk === true ? "ok" : syncOk === false ? "err" : "")}>
@@ -370,7 +378,9 @@ function App() {
                   <td>
                     {s.source === "square"
                       ? <span className="badge square">Square</span>
-                      : "Manual"}
+                      : s.source === "stripe"
+                        ? <span className="badge stripe">Stripe</span>
+                        : "Manual"}
                   </td>
                   <td>
                     <span className={"badge " + (s.paid ? "paid" : "unpaid")}>
