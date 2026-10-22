@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Eats Driver Board</title>
+<link rel="icon" href="icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800&display=swap">
+<style>
+/* Staff board: one column of order tickets on phones, summary strip on top. Same dark Fat Patties look. */
+:root{
+  --bg:#121010; --panel:#1c1918; --panel-2:#262120; --line:#3a3431; --fg:#f4ede1; --muted:#b9ae9f;
+  --flame:#ff6a2b; --flame-ink:#140b06; --good:#5fd08a; --warn:#ffc24a; --bad:#ff7a6b;
+  --display:'Anton','Impact','Arial Narrow',sans-serif; --body:'Archivo','Helvetica Neue',Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 40px}
+h1,h2,h3{font-family:var(--display);font-weight:400;letter-spacing:.5px;margin:0}
+button,input{font-family:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--flame);outline-offset:2px}
+.bgfx{position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(18,16,16,.45),rgba(18,16,16,.8)),url("staff-bg.jpg") center/cover no-repeat}
+@media (max-width:900px) and (orientation:portrait){.bgfx{background:linear-gradient(180deg,rgba(18,16,16,.45),rgba(18,16,16,.82)),url("staff-bg-tall.jpg") center/cover no-repeat}}
+body{background-color:var(--bg)}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+header .brand{display:flex;gap:12px;align-items:center}
+header img{width:56px;height:56px}
+header h1{font-size:32px;line-height:1}
+.sub{color:var(--muted);font-size:13px}
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800;letter-spacing:.5px}
+.pill.test{background:#3a2e10;color:var(--warn)}
+.btn{background:var(--panel-2);color:var(--fg);border:2px solid var(--line);border-radius:10px;padding:10px 14px;font-weight:800;min-height:44px;cursor:pointer}
+.btn.primary{background:var(--flame);border-color:var(--flame);color:var(--flame-ink)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.login{max-width:380px;margin:12vh auto 0;background:linear-gradient(rgba(18,14,12,.55),rgba(18,14,12,.8)),url("staff-login.jpg") center/cover;border:2px solid var(--flame);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.login input,.driver input{background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:10px 12px;font-size:16px;min-height:44px;width:100%}
+.alert{color:var(--warn);font-weight:600;font-size:14px}
+.err{color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:rgba(28,25,24,.82);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat .k{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:800}
+.stat .v{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums}
+.stat .v.flame{color:var(--flame)}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filters button[aria-pressed="true"]{background:var(--flame);border-color:var(--flame);color:var(--flame-ink)}
+.orders{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.order{background:linear-gradient(rgba(20,16,14,.78),rgba(20,16,14,.88)),url("staff-card.jpg") center/cover;border:1px solid var(--line);border-left:6px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.order.s-received{border-left-color:var(--warn)}
+.order.s-cooking{border-left-color:var(--flame)}
+.order.s-picked_up{border-left-color:#6fb4ff}
+.order.s-delivered{border-left-color:var(--good);opacity:.8}
+.order.s-canceled{border-left-color:var(--bad);opacity:.6}
+.order .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.order .code{font-family:var(--display);font-size:24px;color:var(--flame)}
+.order .when{font-size:12px;color:var(--muted)}
+.status{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.items{font-weight:600}
+.row{display:flex;justify-content:space-between;gap:10px;font-size:14px;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.addr a{color:var(--fg)}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.actions .btn{flex:1 1 auto;padding:8px 10px;font-size:13px}
+.driver{display:flex;gap:6px;align-items:center}
+.driver input{min-height:38px;padding:6px 10px;font-size:14px}
+.empty{color:var(--muted);border:1px dashed var(--line);border-radius:12px;padding:20px;text-align:center}
+@media (prefers-reduced-motion:no-preference){.btn{transition:background .15s,border-color .15s}}
+</style>
+</head>
+<body>
+<div class="bgfx" aria-hidden="true"></div>
+<div class="wrap" id="app"></div>
+
+<script>
+(function(){
+  var app = document.getElementById('app');
+  var pin = ''; try { pin = sessionStorage.getItem('fp_pin') || ''; } catch(e){}
+  var orders = [], testMode = true, filter = 'active', err = '', timer = null;
+  var FP_CUT = 0.10;
+  var DRIVER = location.pathname.indexOf('driver') > -1;
+  var myName = ''; try { myName = localStorage.getItem('fp_driver_name') || ''; } catch(e){}
+  if(DRIVER) filter = 'active';
+  var LABEL = {received:'New', cooking:'Cooking', picked_up:'Picked up', delivered:'Delivered', canceled:'Canceled'};
+  var NEXT = {received:['cooking','Start cooking'], cooking:['picked_up','Driver picked up'], picked_up:['delivered','Delivered']};
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function money(c){ return '$'+(c/100).toFixed(2); }
+  function ago(t){ var m=Math.round((Date.now()/1000-t)/60); if(m<1) return 'just now'; if(m<60) return m+' min ago'; var h=Math.floor(m/60); return h<24? h+' hr ago' : new Date(t*1000).toLocaleDateString(); }
+
+  function api(path, body){
+    return fetch('/.netlify/functions/'+path, {
+      method: body ? 'POST' : 'GET',
+      headers: Object.assign({'x-staff-pin': pin}, body ? {'Content-Type':'application/json'} : {}),
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function(r){ return r.json().then(function(d){ if(!r.ok) throw new Error(d.error||'Request failed'); return d; }); });
+  }
+
+  function login(){
+    app.innerHTML = '<form class="login" id="login"><img src="icon-512.png" alt="" width="80" height="80" style="align-self:center">'+
+      '<h1 style="text-align:center">'+(DRIVER?'Driver board':'Staff board')+'</h1><label for="pin" class="sub">Staff PIN</label>'+
+      '<input id="pin" type="password" inputmode="numeric" autocomplete="current-password" required>'+
+      (err?'<div class="alert err" role="alert">'+esc(err)+'</div>':'')+
+      '<button class="btn primary" type="submit">Open board</button></form>';
+    document.getElementById('login').addEventListener('submit', function(e){
+      e.preventDefault(); pin = document.getElementById('pin').value.trim();
+      try { sessionStorage.setItem('fp_pin', pin); } catch(x){}
+      load(true);
+    });
+  }
+
+  function load(first){
+    api('staff-orders').then(function(d){
+      orders = d.orders || []; testMode = d.testMode; err = '';
+      var ae = document.activeElement; if(!(ae && ae.tagName==='INPUT' && app.contains(ae))) render();
+      clearTimeout(timer); timer = setTimeout(load, 20000);
+    }).catch(function(e){
+      err = e.message;
+      if(/PIN/.test(e.message)){ try{ sessionStorage.removeItem('fp_pin'); }catch(x){} pin=''; login(); }
+      else render();
+    });
+  }
+
+  function today(o){ var d=new Date(o.created*1000), n=new Date(); return d.toDateString()===n.toDateString(); }
+
+  function render(){
+    if(DRIVER) return renderDriver();
+    var todays = orders.filter(function(o){ return today(o) && o.status!=='canceled'; });
+    var sum = function(f){ return todays.reduce(function(s,o){ return s+f(o); },0); };
+    var food = sum(function(o){return o.food;}), fees = sum(function(o){return o.fee;}), drv = sum(function(o){return o.driverPay;}), tips = sum(function(o){return o.tip;});
+    var fp = Math.round(food*FP_CUT) + (fees - drv);
+    var rest = {};
+    todays.forEach(function(o){ Object.keys(o.byRest||{}).forEach(function(k){ rest[k]=(rest[k]||0)+o.byRest[k]; }); });
+
+    var list = orders.filter(function(o){
+      if(filter==='active') return o.status!=='delivered' && o.status!=='canceled';
+      if(filter==='done') return o.status==='delivered' || o.status==='canceled';
+      return true;
+    });
+
+    var h = '<header><div class="brand"><img src="icon-512.png" alt="" width="56" height="56"><div><h1>Eats staff board</h1>'+
+      '<div class="sub">Updates every 20 seconds '+(testMode?'<span class="pill test">TEST MODE</span>':'')+'</div></div></div>'+
+      '<div class="filters"><a class="btn" href="/driver" style="text-decoration:none">Driver view</a><button class="btn" id="refresh">Refresh now</button></div></header>';
+    if(err) h += '<div class="alert err" role="alert">'+esc(err)+'</div>';
+    h += '<section class="stats" aria-label="Today">'+
+      stat('Orders today', todays.length)+
+      stat('Food sales', money(food))+
+      stat('Jumbo Jive gets', money(Math.round((rest.jumbo||0)*(1-FP_CUT))))+
+      stat('A Proper Smash gets', money(Math.round((rest.smash||0)*(1-FP_CUT))))+
+      stat('Drivers (pay + tips)', money(drv+tips))+
+      stat('Fat Patties keeps', money(fp), true)+
+    '</section>';
+    h += '<div class="filters" role="group" aria-label="Show">'+
+      fbtn('active','Open orders')+fbtn('done','Finished')+fbtn('all','All (7 days)')+'</div>';
+    if(!list.length){
+      h += '<div class="empty">'+(filter==='active'?'No open orders right now. New paid orders show up here on their own.':'Nothing here yet.')+'</div>';
+    } else {
+      h += '<div class="orders">';
+      list.forEach(function(o){
+        var nx = NEXT[o.status];
+        h += '<article class="order s-'+esc(o.status)+'">'+
+          '<div class="top"><span class="code">'+esc(o.code)+'</span><span class="when">'+ago(o.created)+'</span></div>'+
+          '<span class="status">'+esc(LABEL[o.status]||o.status)+(o.driver?' · '+esc(o.driver):'')+'</span>'+
+          '<div class="items">'+esc(o.items)+'</div>'+
+          '<div class="addr"><b>'+esc(o.name)+'</b> · <span>'+esc(o.phone)+'</span><br>'+
+            '<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.address||'')+'" target="_blank" rel="noopener">'+esc(o.address)+'</a>'+
+            '<div class="muted" style="font-size:13px">'+esc(o.zone)+'</div></div>'+
+          '<div class="row"><span class="muted">Paid</span><span>'+money(o.amount)+'</span></div>'+
+          '<div class="row"><span class="muted">Driver gets</span><span>'+money(o.driverPay)+' + '+money(o.tip)+' tip</span></div>'+
+          (o.status!=='delivered'&&o.status!=='canceled' ?
+            '<div class="driver"><label class="sub" for="drv-'+o.id+'">Driver</label><input id="drv-'+o.id+'" value="'+esc(o.driver)+'" placeholder="Name"></div>' : '')+
+          '<div class="actions">'+
+            (nx?'<button class="btn primary" data-id="'+o.id+'" data-st="'+nx[0]+'">'+nx[1]+'</button>':'')+
+            (o.status!=='delivered'&&o.status!=='canceled'?'<button class="btn" data-id="'+o.id+'" data-st="canceled" data-confirm="1">Cancel</button>':'')+
+          '</div></article>';
+      });
+      h += '</div>';
+    }
+    h += '<p class="sub">Canceling here only marks the order. To refund the card, open the payment in Stripe and click Refund.</p>';
+    app.innerHTML = h;
+  }
+  function renderDriver(){
+    var mineToday = orders.filter(function(o){ return today(o) && o.status==='delivered' && myName && o.driver.toLowerCase()===myName.toLowerCase(); });
+    var earned = mineToday.reduce(function(s,o){ return s+o.driverPay+o.tip; },0);
+    var open = orders.filter(function(o){ return o.status!=='delivered' && o.status!=='canceled'; });
+    var list = filter==='mine' ? mineToday : open;
+    var h = '<header><div class="brand"><img src="icon-512.png" alt="" width="56" height="56"><div><h1>Driver board</h1>'+
+      '<div class="sub">Updates every 20 seconds '+(testMode?'<span class="pill test">TEST MODE</span>':'')+'</div></div></div>'+
+      '<button class="btn" id="refresh">Refresh now</button></header>';
+    if(err) h += '<div class="alert err" role="alert">'+esc(err)+'</div>';
+    h += '<form class="driver" id="me" style="flex-wrap:wrap"><label class="sub" for="myname">Your name</label>'+
+      '<input id="myname" value="'+esc(myName)+'" placeholder="Type your name once" style="max-width:260px" autocomplete="name">'+
+      '<button class="btn" type="submit">Save</button></form>';
+    h += '<section class="stats" aria-label="Today">'+
+      stat('Waiting for a driver', open.filter(function(o){ return o.status!=='picked_up'; }).length)+
+      stat('My deliveries today', mineToday.length)+
+      stat('My pay + tips today', money(earned), true)+
+    '</section>';
+    h += '<div class="filters" role="group" aria-label="Show">'+fbtn('active','Open deliveries')+fbtn('mine','My finished today')+'</div>';
+    if(!list.length){
+      h += '<div class="empty">'+(filter==='mine'?'No finished deliveries yet today.':'No deliveries waiting. New orders show up here on their own.')+'</div>';
+    } else {
+      h += '<div class="orders">';
+      list.forEach(function(o){
+        var mine = myName && o.driver && o.driver.toLowerCase()===myName.toLowerCase();
+        var btn = '';
+        if(o.status==='received' || o.status==='cooking') btn = '<button class="btn primary" data-id="'+o.id+'" data-st="picked_up" data-me="1">I picked it up</button>';
+        else if(o.status==='picked_up' && (mine || !o.driver)) btn = '<button class="btn primary" data-id="'+o.id+'" data-st="delivered" data-me="1">Delivered</button>';
+        else if(o.status==='picked_up') btn = '<span class="sub">'+esc(o.driver)+' has this one</span>';
+        h += '<article class="order s-'+esc(o.status)+'">'+
+          '<div class="top"><span class="code">'+esc(o.code)+'</span><span class="when">'+ago(o.created)+'</span></div>'+
+          '<span class="status">'+esc(o.status==='cooking'?'Cooking at The Ritz':(LABEL[o.status]||o.status))+(o.driver?' · '+esc(o.driver):'')+'</span>'+
+          '<div class="items">'+esc(o.items)+'</div>'+
+          '<div class="addr"><b>'+esc(o.name)+'</b> · <span>'+esc(o.phone)+'</span><br>'+
+            '<a href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(o.address||'')+'" target="_blank" rel="noopener">'+esc(o.address)+' · Directions</a>'+
+            '<div class="muted" style="font-size:13px">Pick up at The Ritz Lounge, 2628 N. Harding St. · '+esc(o.zone)+'</div></div>'+
+          '<div class="row"><span class="muted">You get</span><span>'+money(o.driverPay)+' + '+money(o.tip)+' tip</span></div>'+
+          (btn?'<div class="actions">'+btn+'</div>':'')+
+        '</article>';
+      });
+      h += '</div>';
+    }
+    app.innerHTML = h;
+  }
+  function stat(k,v,hot){ return '<div class="stat"><div class="k">'+k+'</div><div class="v'+(hot?' flame':'')+'">'+v+'</div></div>'; }
+  function fbtn(id,label){ return '<button class="btn" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+'</button>'; }
+
+  app.addEventListener('click', function(e){
+    var f = e.target.closest('[data-filter]');
+    if(f){ filter = f.getAttribute('data-filter'); render(); return; }
+    if(e.target.id==='refresh'){ load(); return; }
+    var b = e.target.closest('[data-st]'); if(!b) return;
+    if(b.getAttribute('data-confirm') && b.textContent!=='Tap again to cancel'){ b.textContent='Tap again to cancel'; return; }
+    if(b.getAttribute('data-me') && !myName){ err = 'Type your name at the top and tap Save first.'; render(); return; }
+    var id = b.getAttribute('data-id'), drvEl = document.getElementById('drv-'+id);
+    if(b.getAttribute('data-me')) drvEl = {value: myName};
+    b.disabled = true; b.textContent = 'Saving…';
+    api('staff-update', {id:id, status:b.getAttribute('data-st'), driver: drvEl ? drvEl.value : undefined})
+      .then(function(){ load(); })
+      .catch(function(x){ err = x.message; render(); });
+  });
+
+  app.addEventListener('submit', function(e){
+    if(e.target.id!=='me') return;
+    e.preventDefault(); myName = document.getElementById('myname').value.trim().slice(0,40);
+    try { localStorage.setItem('fp_driver_name', myName); } catch(x){}
+    err=''; render();
+  });
+
+  if(pin) load(true); else login();
+})();
+</script>
+</body>
+</html>

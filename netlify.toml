@@ -5,3 +5,14 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# Short links: fatpattieseats.netlify.app/staff and /driver
+[[redirects]]
+  from = "/staff"
+  to = "/staff.html"
+  status = 200
+
+[[redirects]]
+  from = "/driver"
+  to = "/driver.html"
+  status = 200

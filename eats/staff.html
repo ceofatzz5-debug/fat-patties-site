@@ -81,6 +81,9 @@ header h1{font-size:32px;line-height:1}
   var pin = ''; try { pin = sessionStorage.getItem('fp_pin') || ''; } catch(e){}
   var orders = [], testMode = true, filter = 'active', err = '', timer = null;
   var FP_CUT = 0.10;
+  var DRIVER = location.pathname.indexOf('driver') > -1;
+  var myName = ''; try { myName = localStorage.getItem('fp_driver_name') || ''; } catch(e){}
+  if(DRIVER) filter = 'active';
   var LABEL = {received:'New', cooking:'Cooking', picked_up:'Picked up', delivered:'Delivered', canceled:'Canceled'};
   var NEXT = {received:['cooking','Start cooking'], cooking:['picked_up','Driver picked up'], picked_up:['delivered','Delivered']};
 
@@ -98,7 +101,7 @@ header h1{font-size:32px;line-height:1}
 
   function login(){
     app.innerHTML = '<form class="login" id="login"><img src="icon-512.png" alt="" width="80" height="80" style="align-self:center">'+
-      '<h1 style="text-align:center">Staff board</h1><label for="pin" class="sub">Staff PIN</label>'+
+      '<h1 style="text-align:center">'+(DRIVER?'Driver board':'Staff board')+'</h1><label for="pin" class="sub">Staff PIN</label>'+
       '<input id="pin" type="password" inputmode="numeric" autocomplete="current-password" required>'+
       (err?'<div class="alert err" role="alert">'+esc(err)+'</div>':'')+
       '<button class="btn primary" type="submit">Open board</button></form>';
@@ -124,6 +127,7 @@ header h1{font-size:32px;line-height:1}
   function today(o){ var d=new Date(o.created*1000), n=new Date(); return d.toDateString()===n.toDateString(); }
 
   function render(){
+    if(DRIVER) return renderDriver();
     var todays = orders.filter(function(o){ return today(o) && o.status!=='canceled'; });
     var sum = function(f){ return todays.reduce(function(s,o){ return s+f(o); },0); };
     var food = sum(function(o){return o.food;}), fees = sum(function(o){return o.fee;}), drv = sum(function(o){return o.driverPay;}), tips = sum(function(o){return o.tip;});
@@ -139,7 +143,7 @@ header h1{font-size:32px;line-height:1}
 
     var h = '<header><div class="brand"><img src="icon-512.png" alt="" width="56" height="56"><div><h1>Eats staff board</h1>'+
       '<div class="sub">Updates every 20 seconds '+(testMode?'<span class="pill test">TEST MODE</span>':'')+'</div></div></div>'+
-      '<button class="btn" id="refresh">Refresh now</button></header>';
+      '<div class="filters"><a class="btn" href="/driver" style="text-decoration:none">Driver view</a><button class="btn" id="refresh">Refresh now</button></div></header>';
     if(err) h += '<div class="alert err" role="alert">'+esc(err)+'</div>';
     h += '<section class="stats" aria-label="Today">'+
       stat('Orders today', todays.length)+
@@ -178,6 +182,49 @@ header h1{font-size:32px;line-height:1}
     h += '<p class="sub">Canceling here only marks the order. To refund the card, open the payment in Stripe and click Refund.</p>';
     app.innerHTML = h;
   }
+  function renderDriver(){
+    var mineToday = orders.filter(function(o){ return today(o) && o.status==='delivered' && myName && o.driver.toLowerCase()===myName.toLowerCase(); });
+    var earned = mineToday.reduce(function(s,o){ return s+o.driverPay+o.tip; },0);
+    var open = orders.filter(function(o){ return o.status!=='delivered' && o.status!=='canceled'; });
+    var list = filter==='mine' ? mineToday : open;
+    var h = '<header><div class="brand"><img src="icon-512.png" alt="" width="56" height="56"><div><h1>Driver board</h1>'+
+      '<div class="sub">Updates every 20 seconds '+(testMode?'<span class="pill test">TEST MODE</span>':'')+'</div></div></div>'+
+      '<button class="btn" id="refresh">Refresh now</button></header>';
+    if(err) h += '<div class="alert err" role="alert">'+esc(err)+'</div>';
+    h += '<form class="driver" id="me" style="flex-wrap:wrap"><label class="sub" for="myname">Your name</label>'+
+      '<input id="myname" value="'+esc(myName)+'" placeholder="Type your name once" style="max-width:260px" autocomplete="name">'+
+      '<button class="btn" type="submit">Save</button></form>';
+    h += '<section class="stats" aria-label="Today">'+
+      stat('Waiting for a driver', open.filter(function(o){ return o.status!=='picked_up'; }).length)+
+      stat('My deliveries today', mineToday.length)+
+      stat('My pay + tips today', money(earned), true)+
+    '</section>';
+    h += '<div class="filters" role="group" aria-label="Show">'+fbtn('active','Open deliveries')+fbtn('mine','My finished today')+'</div>';
+    if(!list.length){
+      h += '<div class="empty">'+(filter==='mine'?'No finished deliveries yet today.':'No deliveries waiting. New orders show up here on their own.')+'</div>';
+    } else {
+      h += '<div class="orders">';
+      list.forEach(function(o){
+        var mine = myName && o.driver && o.driver.toLowerCase()===myName.toLowerCase();
+        var btn = '';
+        if(o.status==='received' || o.status==='cooking') btn = '<button class="btn primary" data-id="'+o.id+'" data-st="picked_up" data-me="1">I picked it up</button>';
+        else if(o.status==='picked_up' && (mine || !o.driver)) btn = '<button class="btn primary" data-id="'+o.id+'" data-st="delivered" data-me="1">Delivered</button>';
+        else if(o.status==='picked_up') btn = '<span class="sub">'+esc(o.driver)+' has this one</span>';
+        h += '<article class="order s-'+esc(o.status)+'">'+
+          '<div class="top"><span class="code">'+esc(o.code)+'</span><span class="when">'+ago(o.created)+'</span></div>'+
+          '<span class="status">'+esc(o.status==='cooking'?'Cooking at The Ritz':(LABEL[o.status]||o.status))+(o.driver?' · '+esc(o.driver):'')+'</span>'+
+          '<div class="items">'+esc(o.items)+'</div>'+
+          '<div class="addr"><b>'+esc(o.name)+'</b> · <span>'+esc(o.phone)+'</span><br>'+
+            '<a href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(o.address||'')+'" target="_blank" rel="noopener">'+esc(o.address)+' · Directions</a>'+
+            '<div class="muted" style="font-size:13px">Pick up at The Ritz Lounge, 2628 N. Harding St. · '+esc(o.zone)+'</div></div>'+
+          '<div class="row"><span class="muted">You get</span><span>'+money(o.driverPay)+' + '+money(o.tip)+' tip</span></div>'+
+          (btn?'<div class="actions">'+btn+'</div>':'')+
+        '</article>';
+      });
+      h += '</div>';
+    }
+    app.innerHTML = h;
+  }
   function stat(k,v,hot){ return '<div class="stat"><div class="k">'+k+'</div><div class="v'+(hot?' flame':'')+'">'+v+'</div></div>'; }
   function fbtn(id,label){ return '<button class="btn" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+'</button>'; }
 
@@ -187,11 +234,20 @@ header h1{font-size:32px;line-height:1}
     if(e.target.id==='refresh'){ load(); return; }
     var b = e.target.closest('[data-st]'); if(!b) return;
     if(b.getAttribute('data-confirm') && b.textContent!=='Tap again to cancel'){ b.textContent='Tap again to cancel'; return; }
+    if(b.getAttribute('data-me') && !myName){ err = 'Type your name at the top and tap Save first.'; render(); return; }
     var id = b.getAttribute('data-id'), drvEl = document.getElementById('drv-'+id);
+    if(b.getAttribute('data-me')) drvEl = {value: myName};
     b.disabled = true; b.textContent = 'Saving…';
     api('staff-update', {id:id, status:b.getAttribute('data-st'), driver: drvEl ? drvEl.value : undefined})
       .then(function(){ load(); })
       .catch(function(x){ err = x.message; render(); });
+  });
+
+  app.addEventListener('submit', function(e){
+    if(e.target.id!=='me') return;
+    e.preventDefault(); myName = document.getElementById('myname').value.trim().slice(0,40);
+    try { localStorage.setItem('fp_driver_name', myName); } catch(x){}
+    err=''; render();
   });
 
   if(pin) load(true); else login();
