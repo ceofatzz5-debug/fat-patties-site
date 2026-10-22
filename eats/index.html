@@ -92,6 +92,10 @@ header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justif
 .rest-logo{width:96px;height:auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))}
 .rest-head{align-items:center}
 @media (max-width:900px) and (orientation:portrait){body::after{background:linear-gradient(180deg, rgba(18,16,16,.35) 0%, rgba(18,16,16,.55) 45%, rgba(18,16,16,.8) 100%), url("kitchen-bg-tall.jpg") center/cover no-repeat}}
+.item.r-smash{background:linear-gradient(rgba(20,15,12,.72),rgba(20,15,12,.84)),url("bg-smash.jpg") center/cover;border-color:#5a3a24}
+.item.album{background:linear-gradient(rgba(16,12,10,.7),rgba(16,12,10,.84)),url("bg-platedrops.jpg") center/cover;border-color:#5a3a24}
+.ticket{background:linear-gradient(rgba(14,10,8,.45),rgba(14,10,8,.7)),url("bg-ticket.jpg") center/100% 100% no-repeat;border:0;padding:28px 26px;border-radius:6px}
+.item.r-jumbo{background:linear-gradient(rgba(22,14,9,.72),rgba(22,14,9,.84)),url("bg-jumbo.jpg") center/cover;border-color:#5a3a24}
 .album.wide{grid-column:1/-1}
 .cover-img{width:100%;height:auto;border-radius:10px;display:block;border:1px solid var(--line)}
 .album.wide .cover-img{max-width:280px}
@@ -358,7 +362,7 @@ legend{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--mu
       h += '<div class="section-label">'+esc(sec.label)+'</div><div class="items">';
       sec.items.forEach(function(it){
         var priceTxt = it.sizes ? 'from '+money(it.sizes[0]).replace('.00','') : money(it.price).replace('.00','');
-        h += '<article class="item"><div class="row"><h3>'+esc(it.name)+'</h3><span class="price">'+priceTxt+'</span></div>';
+        h += '<article class="item r-'+state.r+'"><div class="row"><h3>'+esc(it.name)+'</h3><span class="price">'+priceTxt+'</span></div>';
         if(it.tag) h += '<span class="tag">'+esc(it.tag)+'</span>';
         if(it.desc) h += '<p>'+esc(it.desc)+'</p>';
         if(it.addons){
