@@ -23,6 +23,9 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-
 h1,h2,h3{font-family:var(--display);font-weight:400;letter-spacing:.5px;margin:0}
 button,input{font-family:inherit}
 button:focus-visible,input:focus-visible{outline:2px solid var(--flame);outline-offset:2px}
+.bgfx{position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(18,16,16,.45),rgba(18,16,16,.8)),url("staff-bg.jpg") center/cover no-repeat}
+@media (max-width:900px) and (orientation:portrait){.bgfx{background:linear-gradient(180deg,rgba(18,16,16,.45),rgba(18,16,16,.82)),url("staff-bg-tall.jpg") center/cover no-repeat}}
+body{background-color:var(--bg)}
 .wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
 header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
 header .brand{display:flex;gap:12px;align-items:center}
@@ -34,19 +37,19 @@ header h1{font-size:32px;line-height:1}
 .btn{background:var(--panel-2);color:var(--fg);border:2px solid var(--line);border-radius:10px;padding:10px 14px;font-weight:800;min-height:44px;cursor:pointer}
 .btn.primary{background:var(--flame);border-color:var(--flame);color:var(--flame-ink)}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
-.login{max-width:380px;margin:12vh auto 0;background:var(--panel);border:2px solid var(--flame);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.login{max-width:380px;margin:12vh auto 0;background:linear-gradient(rgba(18,14,12,.55),rgba(18,14,12,.8)),url("staff-login.jpg") center/cover;border:2px solid var(--flame);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
 .login input,.driver input{background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:10px 12px;font-size:16px;min-height:44px;width:100%}
 .alert{color:var(--warn);font-weight:600;font-size:14px}
 .err{color:var(--bad)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat{background:rgba(28,25,24,.82);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border:1px solid var(--line);border-radius:12px;padding:12px}
 .stat .k{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:800}
 .stat .v{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums}
 .stat .v.flame{color:var(--flame)}
 .filters{display:flex;gap:8px;flex-wrap:wrap}
 .filters button[aria-pressed="true"]{background:var(--flame);border-color:var(--flame);color:var(--flame-ink)}
 .orders{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-.order{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.order{background:linear-gradient(rgba(20,16,14,.78),rgba(20,16,14,.88)),url("staff-card.jpg") center/cover;border:1px solid var(--line);border-left:6px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .order.s-received{border-left-color:var(--warn)}
 .order.s-cooking{border-left-color:var(--flame)}
 .order.s-picked_up{border-left-color:#6fb4ff}
@@ -69,6 +72,7 @@ header h1{font-size:32px;line-height:1}
 </style>
 </head>
 <body>
+<div class="bgfx" aria-hidden="true"></div>
 <div class="wrap" id="app"></div>
 
 <script>
