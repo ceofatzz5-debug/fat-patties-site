@@ -1,0 +1,4 @@
+# Fat Patties Eats (ordering site). Publishes the eats/ folder and runs functions in netlify/functions.
+[build]
+  publish = "eats"
+  functions = "netlify/functions"

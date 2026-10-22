@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fat Patties Eats</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<meta property="og:title" content="Fat Patties Eats">
+<meta property="og:description" content="Jumbo Jive turkey legs and A Proper Smash burgers, delivered from The Ritz Lounge kitchen in Indianapolis.">
+<meta property="og:image" content="og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800&display=swap">
+<style>
+/* Layout: menu column + sticky order ticket on wide screens; stacked with a bottom total bar on phones.
+   Deliberate single dark look, matching the Fat Patties flyer. */
+:root{
+  --bg:#121010;
+  --panel:#1c1918;
+  --panel-2:#262120;
+  --line:#3a3431;
+  --fg:#f4ede1;
+  --muted:#b9ae9f;
+  --flame:#ff6a2b;
+  --flame-ink:#140b06;
+  --good:#5fd08a;
+  --warn:#ffc24a;
+  --display:'Anton', 'Impact', 'Arial Narrow', sans-serif;
+  --body:'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:0 96px}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg, rgba(18,16,16,.35) 0%, rgba(18,16,16,.55) 45%, rgba(18,16,16,.8) 100%), url("kitchen-bg.jpg") center/cover no-repeat}
+.item,.ticket{background:rgba(28,25,24,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.brand h1,.brand p{text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.brand p{color:var(--fg)}
+.zones-mini span,.tab:not([aria-selected="true"]){background:rgba(18,16,16,.65)}
+.section-label,.rest-head .note{color:var(--fg);text-shadow:0 1px 8px rgba(0,0,0,.7)}
+h1,h2,h3{font-family:var(--display);font-weight:400;letter-spacing:.5px;margin:0;text-wrap:balance}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--flame);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto}
+
+.test{margin-top:12px;background:var(--panel-2);border:1px dashed var(--warn);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600}
+
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding-block:20px 8px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand .eyebrow{font-size:12px;letter-spacing:3px;color:var(--flame);font-weight:800;text-transform:uppercase}
+.brand h1{font-size:clamp(40px,7vw,64px);line-height:.95}
+.brand p{margin:4px 0 0;color:var(--muted);max-width:56ch}
+.zones-mini{display:flex;gap:6px;flex-wrap:wrap}
+.zones-mini span{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;margin-top:16px;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tab{background:transparent;color:var(--fg);border:2px solid var(--line);border-radius:999px;padding:10px 16px;font-weight:800;font-size:14px;min-height:44px}
+.tab[aria-selected="true"]{background:var(--flame);border-color:var(--flame);color:var(--flame-ink)}
+.tab[disabled]{opacity:.5;cursor:not-allowed}
+
+.rest-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:12px}
+.rest-head h2{font-size:30px}
+.rest-head .note{color:var(--muted);font-size:13px}
+.section-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:800;margin:20px 0 10px}
+
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.item .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.item h3{font-size:20px;line-height:1.1}
+.item .price{font-family:var(--display);font-size:20px;color:var(--flame);white-space:nowrap;font-variant-numeric:tabular-nums}
+.item p{margin:0;color:var(--muted);font-size:13px}
+.item .actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.add{background:var(--fg);color:var(--bg);border:0;border-radius:10px;padding:10px 12px;font-weight:800;font-size:13px;min-height:44px;flex:1 1 auto;font-variant-numeric:tabular-nums}
+.add:hover{background:var(--flame);color:var(--flame-ink)}
+.extras{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.extras label{display:flex;gap:6px;align-items:center;min-height:32px}
+.extras input{accent-color:var(--flame);width:18px;height:18px}
+.album .cover{aspect-ratio:1/1;max-width:100%;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between;padding:14px;background-image:repeating-radial-gradient(circle at 50% 50%, transparent 0 6px, rgba(255,106,43,.08) 6px 7px)}
+.album .cover span{font-family:var(--display);font-size:28px;color:var(--flame)}
+.album .cover b{font-family:var(--display);font-weight:400;font-size:26px;line-height:1;text-wrap:balance}
+.brand-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;min-width:0}
+.brand-logo{width:clamp(110px,18vw,170px);height:auto;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5))}
+.brand{min-width:0;flex:1 1 280px}
+.rest-logo{width:96px;height:auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))}
+.rest-head{align-items:center}
+@media (max-width:900px) and (orientation:portrait){body::after{background:linear-gradient(180deg, rgba(18,16,16,.35) 0%, rgba(18,16,16,.55) 45%, rgba(18,16,16,.8) 100%), url("kitchen-bg-tall.jpg") center/cover no-repeat}}
+.album.wide{grid-column:1/-1}
+.cover-img{width:100%;height:auto;border-radius:10px;display:block;border:1px solid var(--line)}
+.album.wide .cover-img{max-width:280px}
+.album.wide .cover{max-width:220px}
+.tracks{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 20px}
+.side-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--flame);font-weight:800;margin-bottom:6px}
+.tracks ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.tracks li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:0 8px}
+.tracks .tn{grid-row:span 2;font-family:var(--display);color:var(--muted);font-variant-numeric:tabular-nums}
+.tracks .dish{font-weight:600}
+.tracks .song{font-size:12px;color:var(--muted)}
+.add[disabled]{background:var(--panel-2);color:var(--muted);cursor:not-allowed}
+.tag{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--good);text-transform:uppercase}
+
+/* Order ticket */
+.ticket{background:var(--panel);border:2px solid var(--flame);border-radius:16px;padding:16px;position:sticky;top:calc(env(safe-area-inset-top, 0px) + 12px);display:flex;flex-direction:column;gap:14px}
+@media (max-width:900px){.ticket{position:static}}
+.ticket h2{font-size:26px}
+.empty{color:var(--muted);font-size:14px;border:1px dashed var(--line);border-radius:10px;padding:14px}
+.lines{display:flex;flex-direction:column;gap:10px;list-style:none;margin:0;padding:0}
+.line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}
+.line .name{font-weight:600;font-size:14px;min-width:0}
+.line .from{font-size:12px;color:var(--muted)}
+.line .amt{font-variant-numeric:tabular-nums;font-weight:600}
+.qty{display:flex;gap:6px;align-items:center}
+.qty button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);font-weight:800}
+.qty span{min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
+
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+legend{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:8px;padding:0}
+.zone-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.choice{position:relative}
+.choice input{position:absolute;opacity:0;pointer-events:none}
+.choice span{display:flex;flex-direction:column;gap:2px;border:2px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;min-height:44px;cursor:pointer}
+.choice span b{font-size:14px}
+.choice span small{color:var(--muted);font-variant-numeric:tabular-nums}
+.choice input:checked + span{border-color:var(--flame);background:var(--panel-2)}
+.choice input:focus-visible + span{outline:2px solid var(--flame);outline-offset:2px}
+.tip-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.tip-row .choice span{align-items:center;justify-content:center;font-weight:800}
+
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.field input{background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:10px 12px;font-size:15px;min-height:44px;font-family:inherit}
+
+.totals{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px;font-variant-numeric:tabular-nums}
+.totals div{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.totals .grand{font-family:var(--display);font-size:24px;color:var(--fg)}
+.totals .grand span:last-child{color:var(--flame)}
+.alert{font-size:13px;color:var(--warn);font-weight:600}
+.place{background:var(--flame);color:var(--flame-ink);border:0;border-radius:12px;padding:14px;font-family:var(--display);font-size:22px;letter-spacing:1px;min-height:52px}
+.place[disabled]{opacity:.45;cursor:not-allowed}
+
+/* Confirmation */
+.confirm{display:flex;flex-direction:column;gap:14px}
+.code{font-family:var(--display);font-size:40px;color:var(--flame);letter-spacing:2px;font-variant-numeric:tabular-nums}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.steps li{display:flex;gap:10px;align-items:center;font-weight:600}
+.steps .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);flex:none}
+.steps li.done .dot{background:var(--good);border-color:var(--good)}
+.steps li.now .dot{background:var(--flame);border-color:var(--flame)}
+.steps li.later{color:var(--muted)}
+.split{background:var(--panel-2);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;font-size:14px;font-variant-numeric:tabular-nums}
+.split h3{font-size:18px}
+.split div{display:flex;justify-content:space-between;gap:10px}
+.ghost{background:transparent;border:2px solid var(--line);color:var(--fg);border-radius:12px;padding:10px 14px;font-weight:800;min-height:44px}
+
+/* Phone bottom bar */
+.bar{display:none}
+@media (max-width:900px){
+  .bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--flame);color:var(--flame-ink);
+    padding:12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    justify-content:space-between;align-items:center;font-weight:800;text-decoration:none}
+  .bar b{font-family:var(--display);font-size:22px;font-weight:400;font-variant-numeric:tabular-nums}
+}
+@media (prefers-reduced-motion:no-preference){.add,.tab,.choice span{transition:background .15s,border-color .15s,color .15s}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="test" role="note">Test mode: no card is charged and no driver is sent. Payments and driver texts get connected next.</div>
+
+  <header class="top">
+    <div class="brand-row">
+    <img class="brand-logo" src="logo-eats.png" alt="Fat Patties Eats" width="520" height="520">
+    <div class="brand">
+      <span class="eyebrow">Fat Patties Eats</span>
+      <h1>Straight from the Ritz kitchen</h1>
+      <p>Order from the spots cooking inside The Ritz Lounge. Same prices as in the bar, delivered by local drivers.</p>
+      <p><b>Delivery:</b> Thu–Sun, 12 noon until closing · Thu &amp; Sun till midnight · Fri &amp; Sat till 2am</p>
+    </div>
+    </div>
+    <div class="zones-mini" aria-label="Delivery zones">
+      <span>Zone 1 · 0–3 mi · $7.99</span>
+      <span>Zone 2 · 3–6 mi · $9.99</span>
+      <span>Zone 3 · 6–10 mi · $13.99</span>
+      <span>Zone 4 · 10–15 mi · $18.99</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main>
+      <div class="tabs" role="tablist" aria-label="Restaurants">
+        <button class="tab" role="tab" id="tab-jumbo" aria-selected="true" data-r="jumbo">Jumbo Jive Turkey Legs</button>
+        <button class="tab" role="tab" id="tab-smash" aria-selected="false" data-r="smash">A Proper Smash</button>
+        <button class="tab" role="tab" id="tab-cooks" aria-selected="false" data-r="cooks">Plate Drops · The Cooks</button>
+        <button class="tab" role="tab" id="tab-dogs" aria-selected="false" disabled>Fat Dogs · coming soon</button>
+      </div>
+      <div id="menu"></div>
+    </main>
+
+    <aside class="ticket" id="ticket" aria-label="Your order"></aside>
+  </div>
+</div>
+
+<a class="bar" href="#ticket" id="bar"><span id="bar-count">Your order</span><b id="bar-total">$0.00</b></a>
+
+<script>
+(function(){
+  var ZONES = [
+    {id:1, label:'Zone 1', miles:'0–3 mi', fee:7.99, driver:6,  min:15},
+    {id:2, label:'Zone 2', miles:'3–6 mi', fee:9.99, driver:8,  min:15},
+    {id:3, label:'Zone 3', miles:'6–10 mi', fee:13.99, driver:11, min:15},
+    {id:4, label:'Zone 4', miles:'10–15 mi', fee:18.99, driver:15, min:25}
+  ];
+  var TIPS = [0, 3, 5, 8];
+  var FP_CUT = 0.10; // restaurant plan: 10% delivery only
+
+  var R = {
+    jumbo: {
+      name:'Jumbo Jive Turkey Legs', logo:'logo-jumbo.png', note:'Southern comfort. Prices include tax.',
+      sections:[
+        {label:'Stuffed legs & big plates', items:[
+          {id:'gobfather', name:'The Gobfather', price:25, desc:'Cajun rice stuffed inside, creole alfredo sauce, shaved parmesan.'},
+          {id:'gobmother', name:'The Gobmother', price:25, desc:'Cajun rice stuffed inside, Gobdam cheese gravy, shaved parmesan.'},
+          {id:'gobster', name:'Straight Gobster Mac', price:25, desc:'Mac & cheese with shaved parmesan. Garlic parm sauce optional.'},
+          {id:'dressed', name:'Dressed Up & Dripped Out', price:25, desc:'Their famous dressing topped with GDC gravy.'}
+        ]},
+        {label:'Jivesters & bowls', items:[
+          {id:'jmac', name:'Jivester Mac', price:15, desc:'Pulled turkey on a toasted bun with mac & cheese and your sauce.'},
+          {id:'jumbojiv', name:'Jumbo Jivester', price:15, desc:'Pulled turkey on a toasted bun with coleslaw and your sauce.'},
+          {id:'smothered', name:'Smothered Jivester', price:15, desc:'Pulled turkey on a toasted bun, smothered in Gobdam cheese gravy.'},
+          {id:'seafood', name:'Seafood Mac Bowl', price:15, desc:'Mac & cheese topped with shrimp, lobster and crab.'},
+          {id:'original', name:'Original Jivester', price:13, desc:'Pulled turkey on a toasted bun with your choice of sauce.'},
+          {id:'blackbean', name:'Black Bean Cajun Rice Bowl', price:10, desc:'Vegetarian.', tag:'Vegetarian'},
+          {id:'biscuit', name:'Biscuit & GDC Gravy', price:10, desc:'Two biscuits topped with GDC gravy.'}
+        ]},
+        {label:'Sides', items:[
+          {id:'cajunrice', name:'Cajun Rice', price:5},
+          {id:'slaw', name:'Coleslaw', price:5},
+          {id:'dressing', name:'Dressing', price:5},
+          {id:'mac', name:'Mac & Cheese', price:5}
+        ]}
+      ]
+    },
+    smash: {
+      name:'A Proper Smash', logo:'logo-smash.png', note:'Burgers & potatoes.',
+      sections:[
+        {label:'Smash burgers', items:[
+          {id:'proper', name:'Proper Smash Burger', sizes:[8,12,15], addons:true, desc:'Potato bun, proper sauce, 3 pickles, American cheese, caramelized onions.'},
+          {id:'american', name:'American Smash Burger', sizes:[10,13,16], addons:true, desc:'Mayo, pickles, raw onions, American cheese, lettuce, tomato.'},
+          {id:'bbq', name:'BBQ Smash Burger', sizes:[11,14,17], addons:true, desc:'BBQ sauce, crispy fried onions, raw onions, American cheese, bacon.'},
+          {id:'mush', name:'Mush/Swiss/Gravy Smash', sizes:[12,15,18], addons:true, desc:'Cheese gravy sauce, mushrooms, Swiss cheese.'},
+          {id:'proppa', name:'The Big Proppa', price:19, addons:true, desc:'Quad build: four patties, four slices of American, caramelized onions, bacon, proper sauce.'}
+        ]},
+        {label:'Fries & sides', items:[
+          {id:'fries', name:'Proper Fries Regular', price:4},
+          {id:'cfries', name:'Proper Fries Cheese', price:5},
+          {id:'gfries', name:'Proper Fries Cheese Gravy', price:6.5},
+          {id:'lfries', name:'Proper Fries Loaded', price:10},
+          {id:'sauce', name:'Proper Sauce Cup', price:1}
+        ]},
+        {label:'Drinks', items:[
+          {id:'punch', name:'Proper Punch', price:5}
+        ]}
+      ]
+    }
+  };
+  var SIZE_NAMES = ['Single','Double','Triple'];
+
+  var COOKS = [
+    {cook:'Beats · Da Chef Out West', album:'Butter and Guns', sub:'27th Street Hustle', dishes:'', n:'01', img:'cover-beats.jpg', tracks:[
+      {side:'Plates', items:[
+        ['Beats Burger','Jackin’ for Beats','Ice Cube'],
+        ['Fried Chicken','Birds in the Kitchen','C-Bo'],
+        ['Gumbo','Swamp N***as','TRU'],
+        ['White Chicken Chili','Tell Me Something Good','UGK'],
+        ['Grilled Salmon','Standing Ovation','Jeezy']]},
+      {side:'More plates', items:[
+        ['Lamb Chops','Never Ending Game','Master P'],
+        ['Jerk Chicken','Sticky Icky','Keylo G'],
+        ['Fried Ribs','Keep On Movin’','Soul II Soul'],
+        ['Fish Tacos','Freaky Tales','Too $hort']]},
+      {side:'Dessert', items:[
+        ['Glazed Lemon Cake','Sugar Hill','Fetty P']]}
+    ]},
+    {cook:'Lakisha “The Kandi Lady”', album:'Kandi Land', sub:'', dishes:'', n:'02', img:'cover-kandi.jpg', tracks:[
+      {side:'Food', items:[
+        ['Spaghetti','Computer Love','Zapp'],
+        ['Lasagna','All This Love','DeBarge'],
+        ['Cabbage with potatoes, peppers & sausage','Just Kickin’ It','Xscape']]},
+      {side:'Desserts', items:[
+        ['Cheesecakes & banana pudding','Luther','Kendrick Lamar & SZA']]},
+      {side:'Cakes', items:[
+        ['Caramel','Soul of a Woman','Kelly Price'],
+        ['Lemon','Closer to My Dreams','Goapele'],
+        ['Honey Bun','Still Standing','Monica'],
+        ['Strawberry Crunch','Feels So Good','Xscape']]},
+      {side:'Cookies', items:[
+        ['Sugar','Secret Love','Kelly Price'],
+        ['Chocolate Chip','Softest Place on Earth','Xscape'],
+        ['Snickerdoodle','Trust','Keyshia Cole & Monica'],
+        ['Strawberry Lemonade','One of Those Days','Monica']]}
+    ]},
+    {cook:'Brie Davis', album:'Infused & Inspired', sub:'Fat Patties & 3 Women & a Stove', dishes:'', n:'03', img:'cover-brie.jpg'},
+    {cook:'Big Blu', album:'Big Blu The Chef', sub:'', dishes:'', n:'04', img:'cover-bigblu.jpg'}
+  ];
+
+  function tracklist(sides){
+    var n = 0, h = '<div class="tracks">';
+    sides.forEach(function(s){
+      h += '<div class="side"><div class="side-label">'+esc(s.side)+'</div><ol>';
+      s.items.forEach(function(t){
+        n++;
+        h += '<li><span class="tn">'+(n<10?'0':'')+n+'</span><span class="dish">'+esc(t[0])+'</span><span class="song">♪ '+esc(t[1])+' · '+esc(t[2])+'</span></li>';
+      });
+      h += '</ol></div>';
+    });
+    return h + '</div>';
+  }
+
+  function renderCooks(){
+    var h = '<div class="rest-head"><h2>Plate Drops</h2><span class="note">Where the Plate Meets the Beat. Each cook’s menu is their album.</span></div>';
+    h += '<div class="items">';
+    COOKS.forEach(function(c){
+      h += '<article class="item album'+(c.tracks?' wide':'')+'">'+
+        (c.img ? '<img class="cover-img" src="'+c.img+'" alt="'+esc(c.album)+' album cover by '+esc(c.cook)+'" loading="lazy">' : '<div class="cover" aria-hidden="true"><span>'+c.n+'</span><b>'+esc(c.album)+'</b></div>')+
+        '<div class="row"><h3>'+esc(c.album)+'</h3><span class="price" style="font-size:14px">Prices soon</span></div>'+
+        '<p><b style="color:var(--fg)">'+esc(c.cook)+'</b>'+(c.sub? ' · '+esc(c.sub):'')+'</p>'+
+        (c.dishes? '<p>On the album: '+esc(c.dishes)+'</p>' : '')+
+        (c.tracks? tracklist(c.tracks) : '')+
+        '<div class="actions"><button class="add" disabled>Plate menu dropping soon</button></div>'+
+      '</article>';
+    });
+    h += '</div>';
+    document.getElementById('menu').innerHTML = h;
+  }
+
+  var state = {r:'jumbo', cart:[], zone:1, tip:1, name:'', phone:'', address:'', placed:null};
+
+  function money(n){ return '$' + n.toFixed(2); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function find(rid, iid){
+    var out=null; R[rid].sections.forEach(function(s){ s.items.forEach(function(it){ if(it.id===iid) out=it; }); });
+    return out;
+  }
+
+  // ---------- Menu ----------
+  function renderMenu(){
+    if(state.r==='cooks'){ renderCooks(); return; }
+    var r = R[state.r];
+    var h = '<div class="rest-head">'+(r.logo?'<img class="rest-logo" src="'+r.logo+'" alt="'+esc(r.name)+' logo">':'')+'<h2>'+esc(r.name)+'</h2><span class="note">'+esc(r.note)+'</span></div>';
+    r.sections.forEach(function(sec){
+      h += '<div class="section-label">'+esc(sec.label)+'</div><div class="items">';
+      sec.items.forEach(function(it){
+        var priceTxt = it.sizes ? 'from '+money(it.sizes[0]).replace('.00','') : money(it.price).replace('.00','');
+        h += '<article class="item"><div class="row"><h3>'+esc(it.name)+'</h3><span class="price">'+priceTxt+'</span></div>';
+        if(it.tag) h += '<span class="tag">'+esc(it.tag)+'</span>';
+        if(it.desc) h += '<p>'+esc(it.desc)+'</p>';
+        if(it.addons){
+          h += '<div class="extras"><label><input type="checkbox" id="bacon-'+it.id+'"> Bacon +$3</label>'+
+               '<label><input type="checkbox" id="egg-'+it.id+'"> Fried egg +$2</label></div>';
+        }
+        h += '<div class="actions">';
+        if(it.sizes){
+          it.sizes.forEach(function(p,i){
+            h += '<button class="add" data-add="'+it.id+'" data-size="'+i+'">'+SIZE_NAMES[i]+' '+money(p).replace('.00','')+'</button>';
+          });
+        } else {
+          h += '<button class="add" data-add="'+it.id+'">Add to order</button>';
+        }
+        h += '</div></article>';
+      });
+      h += '</div>';
+    });
+    document.getElementById('menu').innerHTML = h;
+  }
+
+  function addItem(iid, sizeIdx){
+    var it = find(state.r, iid); if(!it) return;
+    var base = it.sizes ? it.sizes[sizeIdx] : it.price;
+    var extras = [], extra = 0;
+    if(it.addons){
+      var b = document.getElementById('bacon-'+iid), e = document.getElementById('egg-'+iid);
+      if(b && b.checked){ extras.push('Bacon'); extra += 3; }
+      if(e && e.checked){ extras.push('Fried egg'); extra += 2; }
+    }
+    var label = it.name + (it.sizes ? ' · '+SIZE_NAMES[sizeIdx] : '') + (extras.length ? ' + '+extras.join(', ') : '');
+    var key = state.r+'|'+iid+'|'+(it.sizes?sizeIdx:'')+'|'+extras.join(',');
+    var line = state.cart.filter(function(l){ return l.key===key; })[0];
+    if(line) line.qty++;
+    else state.cart.push({key:key, r:state.r, label:label, unit:base+extra, qty:1});
+    state.placed = null;
+    renderTicket();
+  }
+
+  // ---------- Order ticket ----------
+  function calc(){
+    var food = state.cart.reduce(function(s,l){ return s + l.unit*l.qty; }, 0);
+    var z = ZONES[state.zone-1];
+    var tip = TIPS[state.tip];
+    var count = state.cart.reduce(function(s,l){ return s + l.qty; }, 0);
+    return {food:food, zone:z, fee: count? z.fee : 0, tip: count? tip : 0, count:count,
+            total: count ? food + z.fee + tip : 0, short: Math.max(0, z.min - food)};
+  }
+
+  function renderTicket(){
+    var t = document.getElementById('ticket');
+    var c = calc();
+    updateBar(c);
+    if(state.placed){ t.innerHTML = confirmHTML(state.placed); return; }
+
+    var h = '<h2>Your order</h2>';
+    if(!state.cart.length){
+      h += '<div class="empty">Nothing here yet. Tap <b>Add to order</b> on any item. You can mix Jumbo Jive and A Proper Smash in one delivery.</div>';
+    } else {
+      h += '<ul class="lines">';
+      state.cart.forEach(function(l,i){
+        h += '<li class="line"><div><div class="name">'+esc(l.label)+'</div><div class="from">'+esc(R[l.r].name)+'</div></div>'+
+             '<span class="amt">'+money(l.unit*l.qty)+'</span>'+
+             '<div class="qty"><button aria-label="Remove one" data-dec="'+i+'">−</button><span>'+l.qty+'</span><button aria-label="Add one" data-inc="'+i+'">+</button></div><span></span></li>';
+      });
+      h += '</ul>';
+    }
+
+    h += '<fieldset><legend>Distance from The Ritz</legend><div class="zone-grid">';
+    ZONES.forEach(function(z){
+      h += '<label class="choice"><input type="radio" name="zone" id="zone-'+z.id+'" value="'+z.id+'"'+(state.zone===z.id?' checked':'')+'>'+
+           '<span><b>'+z.label+' · '+money(z.fee)+'</b><small>'+z.miles+(z.min>15?' · $25 min':'')+'</small></span></label>';
+    });
+    h += '</div><small style="color:var(--muted);font-size:12px">Over 15 miles? Pickup only at The Ritz.</small></fieldset>';
+
+    h += '<fieldset><legend>Tip for your driver (100% goes to them)</legend><div class="tip-row">';
+    TIPS.forEach(function(v,i){
+      h += '<label class="choice"><input type="radio" name="tip" id="tip-'+i+'" value="'+i+'"'+(state.tip===i?' checked':'')+'><span>'+(v? '$'+v : 'None')+'</span></label>';
+    });
+    h += '</div></fieldset>';
+
+    h += '<fieldset><legend>Deliver to</legend>'+
+      '<label class="field" for="f-name">Name<input id="f-name" autocomplete="name" value="'+esc(state.name)+'"></label>'+
+      '<label class="field" for="f-phone">Phone (for driver updates)<input id="f-phone" type="tel" autocomplete="tel" value="'+esc(state.phone)+'"></label>'+
+      '<label class="field" for="f-addr">Address<input id="f-addr" autocomplete="street-address" value="'+esc(state.address)+'"></label>'+
+    '</fieldset>';
+
+    h += '<div class="totals">'+
+      '<div><span>Food</span><span>'+money(c.food)+'</span></div>'+
+      '<div><span>Delivery ('+c.zone.label+')</span><span>'+money(c.fee)+'</span></div>'+
+      '<div><span>Driver tip</span><span>'+money(c.tip)+'</span></div>'+
+      '<div class="grand"><span>Total</span><span>'+money(c.total)+'</span></div>'+
+    '</div>';
+
+    var problem = '';
+    if(!c.count) problem = 'Add something to start your order.';
+    else if(c.short > 0) problem = c.zone.label+' needs at least '+money(c.zone.min)+' in food. Add '+money(c.short)+' more.';
+    else if(!state.name.trim() || !state.phone.trim() || !state.address.trim()) problem = 'Fill in your name, phone and address.';
+    if(problem) h += '<div class="alert" role="status">'+problem+'</div>';
+    h += '<button class="place" id="place"'+(problem?' disabled':'')+'>Place order · '+money(c.total)+'</button>';
+    t.innerHTML = h;
+  }
+
+  function confirmHTML(o){
+    var restaurantRows = '';
+    Object.keys(o.byRest).forEach(function(rid){
+      var f = o.byRest[rid];
+      restaurantRows += '<div><span>'+esc(R[rid].name)+' gets</span><span>'+money(f*(1-FP_CUT))+'</span></div>';
+    });
+    var fpFood = o.food*FP_CUT, fpFee = o.zone.fee - o.zone.driver;
+    return '<div class="confirm">'+
+      '<h2>Order received</h2>'+
+      '<div><div style="color:var(--muted);font-size:13px">Your order code</div><div class="code">'+o.code+'</div></div>'+
+      '<ol class="steps">'+
+        '<li class="done"><span class="dot"></span>Order received</li>'+
+        '<li class="now"><span class="dot"></span>Cooking at The Ritz</li>'+
+        '<li class="later"><span class="dot"></span>Driver picked up</li>'+
+        '<li class="later"><span class="dot"></span>Delivered to '+esc(o.address)+'</li>'+
+      '</ol>'+
+      '<div class="split"><h3>Where the '+money(o.total)+' goes</h3>'+
+        restaurantRows+
+        '<div><span>Driver ('+o.zone.label+' pay + tip)</span><span>'+money(o.zone.driver + o.tip)+'</span></div>'+
+        '<div><span>Fat Patties (10% of food + delivery margin)</span><span>'+money(fpFood + fpFee)+'</span></div>'+
+        '<small style="color:var(--muted)">Card fees from Stripe come out before payouts.</small>'+
+      '</div>'+
+      '<div class="alert">Test mode: nothing was charged and no driver was texted.</div>'+
+      '<button class="ghost" id="new-order">Start a new order</button>'+
+    '</div>';
+  }
+
+  function updateBar(c){
+    document.getElementById('bar-count').textContent = c.count ? (c.count + (c.count===1?' item':' items') + ' · View order') : 'Your order';
+    document.getElementById('bar-total').textContent = money(c.total);
+  }
+
+  function place(){
+    var c = calc();
+    var byRest = {};
+    state.cart.forEach(function(l){ byRest[l.r] = (byRest[l.r]||0) + l.unit*l.qty; });
+    var code = 'FP-' + String(Math.floor(1000 + Math.random()*9000));
+    state.placed = {code:code, food:c.food, zone:c.zone, tip:c.tip, total:c.total, byRest:byRest, address:state.address.trim()};
+    renderTicket();
+    document.getElementById('ticket').scrollIntoView({block:'start'});
+  }
+
+  // ---------- Events ----------
+  document.querySelector('.tabs').addEventListener('click', function(e){
+    var b = e.target.closest('.tab'); if(!b || b.disabled) return;
+    state.r = b.getAttribute('data-r');
+    document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', x===b ? 'true':'false'); });
+    renderMenu();
+  });
+  document.getElementById('menu').addEventListener('click', function(e){
+    var b = e.target.closest('[data-add]'); if(!b) return;
+    var s = b.getAttribute('data-size');
+    addItem(b.getAttribute('data-add'), s===null ? null : +s);
+    b.textContent = 'Added ✓';
+    setTimeout(function(){ renderMenuKeepChecks(); }, 700);
+  });
+  function renderMenuKeepChecks(){
+    var checks = {};
+    document.querySelectorAll('.extras input').forEach(function(i){ checks[i.id]=i.checked; });
+    renderMenu();
+    Object.keys(checks).forEach(function(id){ var el=document.getElementById(id); if(el) el.checked=checks[id]; });
+  }
+  var ticket = document.getElementById('ticket');
+  ticket.addEventListener('click', function(e){
+    var inc = e.target.closest('[data-inc]'), dec = e.target.closest('[data-dec]');
+    if(inc){ state.cart[+inc.getAttribute('data-inc')].qty++; renderTicket(); }
+    else if(dec){ var i=+dec.getAttribute('data-dec'); state.cart[i].qty--; if(state.cart[i].qty<=0) state.cart.splice(i,1); renderTicket(); }
+    else if(e.target.id==='place'){ place(); }
+    else if(e.target.id==='new-order'){ state.cart=[]; state.placed=null; renderTicket(); }
+  });
+  ticket.addEventListener('change', function(e){
+    if(e.target.name==='zone'){ state.zone = +e.target.value; renderTicket(); }
+    if(e.target.name==='tip'){ state.tip = +e.target.value; renderTicket(); }
+  });
+  ticket.addEventListener('input', function(e){
+    if(e.target.id==='f-name') state.name = e.target.value;
+    if(e.target.id==='f-phone') state.phone = e.target.value;
+    if(e.target.id==='f-addr') state.address = e.target.value;
+    // update only the button + alert so typing keeps focus
+    var c = calc(), btn = document.getElementById('place');
+    var ok = c.count && c.short<=0 && state.name.trim() && state.phone.trim() && state.address.trim();
+    if(btn) btn.disabled = !ok;
+    var al = ticket.querySelector('.alert');
+    if(ok && al) al.remove();
+  });
+
+  // Sample order so the page opens in a working state
+  state.cart.push({key:'jumbo|gobfather||', r:'jumbo', label:'The Gobfather', unit:25, qty:1});
+  state.cart.push({key:'smash|proper|1|', r:'smash', label:'Proper Smash Burger · Double', unit:12, qty:1});
+  state.cart.push({key:'smash|cfries||', r:'smash', label:'Proper Fries Cheese', unit:5, qty:1});
+
+  var startTab = (location.hash||'').replace('#','');
+  if(startTab==='cooks' || startTab==='smash'){
+    state.r = startTab;
+    document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', x.getAttribute('data-r')===startTab ? 'true':'false'); });
+  }
+  renderMenu();
+  renderTicket();
+})();
+</script>
+
+</body>
+</html>
