@@ -176,7 +176,7 @@ legend{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--mu
 </head>
 <body>
 <div class="wrap">
-  <div class="test" role="note">Test mode: no card is charged and no driver is sent. Payments and driver texts get connected next.</div>
+  <div class="test" role="note">Test mode: pay with card 4242 4242 4242 4242, any future date, any CVC and ZIP. No real money is charged.</div>
 
   <header class="top">
     <div class="brand-row">
@@ -416,6 +416,7 @@ legend{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--mu
     var t = document.getElementById('ticket');
     var c = calc();
     updateBar(c);
+    if(state.track){ t.innerHTML = trackHTML(state.track); return; }
     if(state.placed){ t.innerHTML = confirmHTML(state.placed); return; }
 
     var h = '<h2>Your order</h2>';
@@ -498,7 +499,66 @@ legend{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--mu
     document.getElementById('bar-total').textContent = money(c.total);
   }
 
+  var STEPS = [['received','Order received'],['cooking','Cooking at The Ritz'],['picked_up','Driver picked up'],['delivered','Delivered']];
+  function trackHTML(o){
+    if(o.loading) return '<h2>Your order</h2><div class="empty">Loading your order…</div>';
+    if(o.error) return '<h2>Your order</h2><div class="alert">'+esc(o.error)+'</div><button class="ghost" id="new-order">Start a new order</button>';
+    var idx = STEPS.map(function(x){return x[0];}).indexOf(o.status);
+    var h = '<div class="confirm"><h2>'+(o.status==='delivered'?'Delivered. Enjoy!':(o.status==='canceled'?'Order canceled':'Order received'))+'</h2>'+
+      '<div><div style="color:var(--muted);font-size:13px">Your order code</div><div class="code">'+esc(o.code||'')+'</div></div>';
+    if(o.status!=='canceled'){
+      h += '<ol class="steps">';
+      STEPS.forEach(function(st,i){
+        var cls = i<idx ? 'done' : (i===idx ? (st[0]==='delivered'?'done':'now') : 'later');
+        h += '<li class="'+cls+'"><span class="dot"></span>'+st[1]+(st[0]==='delivered'&&o.address?' to '+esc(o.address):'')+'</li>';
+      });
+      h += '</ol>';
+    }
+    h += '<div class="split"><h3>Your order</h3><div><span>'+esc(o.items||'')+'</span></div>'+
+      '<div><span>'+esc(o.zone||'')+'</span><span>'+money((o.total||0)/100)+' paid</span></div></div>'+
+      '<small style="color:var(--muted)">This page updates on its own. Keep it open to follow your order.</small>'+
+      '<button class="ghost" id="new-order">Start a new order</button></div>';
+    return h;
+  }
+  function loadTrack(id){
+    fetch('/.netlify/functions/order-status?session_id='+encodeURIComponent(id))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ state.track = {error:'We could not find that order. Call The Ritz if you were charged.'}; }
+        else if(!d.paid){ state.track = {error:'Payment did not go through, so the order was not placed.'}; }
+        else { state.track = d; if(d.status!=='delivered' && d.status!=='canceled') setTimeout(function(){ loadTrack(id); }, 20000); }
+        renderTicket();
+      })
+      .catch(function(){ state.track = {error:'Could not load your order. Check your connection and refresh.'}; renderTicket(); });
+  }
+
   function place(){
+    var btn = document.getElementById('place');
+    if(btn){ btn.disabled = true; btn.textContent = 'Starting secure checkout…'; }
+    fetch('/.netlify/functions/create-checkout', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        cart: state.cart.map(function(l){ return {key:l.key, qty:l.qty}; }),
+        zone: state.zone, tip: state.tip,
+        name: state.name, phone: state.phone, address: state.address
+      })
+    })
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(x){
+      if(x.ok && x.d.url){ try{ sessionStorage.setItem('fp_cart', JSON.stringify({cart:state.cart, zone:state.zone, tip:state.tip, name:state.name, phone:state.phone, address:state.address})); }catch(e){} window.location.href = x.d.url; return; }
+      throw new Error(x.d.error || 'Checkout could not start.');
+    })
+    .catch(function(err){
+      if(IS_LIVE){
+        if(btn){ btn.disabled = false; btn.textContent = 'Try again'; }
+        var al = document.createElement('div'); al.className='alert'; al.setAttribute('role','alert');
+        al.textContent = err.message.indexOf('Failed to fetch')>-1 ? 'No connection. Check your internet and try again.' : err.message;
+        btn.parentNode.insertBefore(al, btn);
+      } else { demoPlace(); }
+    });
+  }
+
+  function demoPlace(){
     var c = calc();
     var byRest = {};
     state.cart.forEach(function(l){ byRest[l.r] = (byRest[l.r]||0) + l.unit*l.qty; });
@@ -534,7 +594,7 @@ legend{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--mu
     if(inc){ state.cart[+inc.getAttribute('data-inc')].qty++; renderTicket(); }
     else if(dec){ var i=+dec.getAttribute('data-dec'); state.cart[i].qty--; if(state.cart[i].qty<=0) state.cart.splice(i,1); renderTicket(); }
     else if(e.target.id==='place'){ place(); }
-    else if(e.target.id==='new-order'){ state.cart=[]; state.placed=null; renderTicket(); }
+    else if(e.target.id==='new-order'){ state.cart=[]; state.placed=null; state.track=null; if(location.search) history.replaceState(null,'',location.pathname); renderTicket(); }
   });
   ticket.addEventListener('change', function(e){
     if(e.target.name==='zone'){ state.zone = +e.target.value; renderTicket(); }
@@ -552,10 +612,16 @@ legend{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--mu
     if(ok && al) al.remove();
   });
 
-  // Sample order so the page opens in a working state
+  var IS_LIVE = /netlify\.app$|fatpatties\.online$/.test(location.hostname);
+  var qs = new URLSearchParams(location.search);
+  // Sample order so the preview opens in a working state (not on the real site)
+  if(!IS_LIVE){
   state.cart.push({key:'jumbo|gobfather||', r:'jumbo', label:'The Gobfather', unit:25, qty:1});
   state.cart.push({key:'smash|proper|1|', r:'smash', label:'Proper Smash Burger · Double', unit:12, qty:1});
   state.cart.push({key:'smash|cfries||', r:'smash', label:'Proper Fries Cheese', unit:5, qty:1});
+  }
+  if(qs.get('session_id')){ try{ sessionStorage.removeItem('fp_cart'); }catch(e){} state.track = {loading:true}; loadTrack(qs.get('session_id')); }
+  if(qs.get('canceled')){ try{ var sv = JSON.parse(sessionStorage.getItem('fp_cart')||'null'); if(sv){ state.cart=sv.cart||[]; state.zone=sv.zone||1; state.tip=sv.tip||0; state.name=sv.name||''; state.phone=sv.phone||''; state.address=sv.address||''; } }catch(e){} setTimeout(function(){ var t=document.getElementById('ticket'); var al=document.createElement('div'); al.className='alert'; al.textContent='Checkout canceled. Nothing was charged. Your order is still here if you want to try again.'; t.insertBefore(al, t.children[1]||null); }, 0); }
 
   var startTab = (location.hash||'').replace('#','');
   if(startTab==='cooks' || startTab==='smash'){
