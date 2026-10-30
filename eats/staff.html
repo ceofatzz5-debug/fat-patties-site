@@ -65,6 +65,10 @@ header h1{font-size:32px;line-height:1}
 .addr a{color:var(--fg)}
 .actions{display:flex;gap:6px;flex-wrap:wrap}
 .actions .btn{flex:1 1 auto;padding:8px 10px;font-size:13px}
+.minimap{width:100%;height:170px;border:0;border-radius:10px;background:var(--panel-2)}
+.nav{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.nav .sub{flex:1 1 100%}
+.nav .btn{flex:1 1 120px;text-align:center;text-decoration:none;padding:10px 12px}
 .driver{display:flex;gap:6px;align-items:center}
 .driver input{min-height:38px;padding:6px 10px;font-size:14px}
 .empty{color:var(--muted);border:1px dashed var(--line);border-radius:12px;padding:20px;text-align:center}
@@ -79,6 +83,8 @@ header h1{font-size:32px;line-height:1}
 (function(){
   var app = document.getElementById('app');
   var pin = ''; try { pin = sessionStorage.getItem('fp_pin') || ''; } catch(e){}
+  var lastSig = '';
+  var RITZ = '2628 N Harding St, Indianapolis, IN 46208';
   var orders = [], testMode = true, filter = 'active', err = '', timer = null;
   var FP_CUT = 0.10;
   var DRIVER = location.pathname.indexOf('driver') > -1;
@@ -114,8 +120,11 @@ header h1{font-size:32px;line-height:1}
 
   function load(first){
     api('staff-orders').then(function(d){
-      orders = d.orders || []; testMode = d.testMode; err = '';
-      var ae = document.activeElement; if(!(ae && ae.tagName==='INPUT' && app.contains(ae))) render();
+      var sig = JSON.stringify(d.orders||[]);
+      var changed = sig !== lastSig; lastSig = sig;
+      orders = d.orders || []; testMode = d.testMode;
+      var hadErr = !!err; err = '';
+      var ae = document.activeElement; if((changed || hadErr || first) && !(ae && ae.tagName==='INPUT' && app.contains(ae))) render();
       clearTimeout(timer); timer = setTimeout(load, 20000);
     }).catch(function(e){
       err = e.message;
@@ -166,8 +175,9 @@ header h1{font-size:32px;line-height:1}
           '<span class="status">'+esc(LABEL[o.status]||o.status)+(o.driver?' · '+esc(o.driver):'')+'</span>'+
           '<div class="items">'+esc(o.items)+'</div>'+
           '<div class="addr"><b>'+esc(o.name)+'</b> · <span>'+esc(o.phone)+'</span><br>'+
-            '<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.address||'')+'" target="_blank" rel="noopener">'+esc(o.address)+'</a>'+
+            '<a href="'+gmaps(o.address)+'" target="_blank" rel="noopener">'+esc(o.address)+'</a>'+
             '<div class="muted" style="font-size:13px">'+esc(o.zone)+'</div></div>'+
+          (o.status!=='delivered'&&o.status!=='canceled' ? mapBox(o.address) : '')+
           '<div class="row"><span class="muted">Paid</span><span>'+money(o.amount)+'</span></div>'+
           '<div class="row"><span class="muted">Driver gets</span><span>'+money(o.driverPay)+' + '+money(o.tip)+' tip</span></div>'+
           (o.status!=='delivered'&&o.status!=='canceled' ?
@@ -214,9 +224,12 @@ header h1{font-size:32px;line-height:1}
           '<div class="top"><span class="code">'+esc(o.code)+'</span><span class="when">'+ago(o.created)+'</span></div>'+
           '<span class="status">'+esc(o.status==='cooking'?'Cooking at The Ritz':(LABEL[o.status]||o.status))+(o.driver?' · '+esc(o.driver):'')+'</span>'+
           '<div class="items">'+esc(o.items)+'</div>'+
-          '<div class="addr"><b>'+esc(o.name)+'</b> · <span>'+esc(o.phone)+'</span><br>'+
-            '<a href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(o.address||'')+'" target="_blank" rel="noopener">'+esc(o.address)+' · Directions</a>'+
-            '<div class="muted" style="font-size:13px">Pick up at The Ritz Lounge, 2628 N. Harding St. · '+esc(o.zone)+'</div></div>'+
+          '<div class="addr"><b>'+esc(o.name)+'</b> · <span>'+esc(o.phone)+'</span><br>'+esc(o.address)+
+            '<div class="muted" style="font-size:13px">'+esc(o.zone)+'</div></div>'+
+          (o.status==='picked_up'
+            ? navRow('Drop-off: '+esc(o.address), o.address, true)
+            : navRow('Pickup: The Ritz Lounge, 2628 N. Harding St.', RITZ, true) + navRow('Then drop-off', o.address, false))+
+          mapBox(o.address)+
           '<div class="row"><span class="muted">You get</span><span>'+money(o.driverPay)+' + '+money(o.tip)+' tip</span></div>'+
           (btn?'<div class="actions">'+btn+'</div>':'')+
         '</article>';
@@ -224,6 +237,17 @@ header h1{font-size:32px;line-height:1}
       h += '</div>';
     }
     app.innerHTML = h;
+  }
+  function gmaps(addr){ return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+encodeURIComponent(addr||''); }
+  function waze(addr){ return 'https://waze.com/ul?navigate=yes&q='+encodeURIComponent(addr||''); }
+  function mapBox(addr){
+    return '<iframe class="minimap" title="Map of '+esc(addr)+'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" '+
+      'src="https://www.google.com/maps?q='+encodeURIComponent(addr||'')+'&z=14&output=embed"></iframe>';
+  }
+  function navRow(label, addr, primary){
+    return '<div class="nav"><span class="sub">'+label+'</span>'+
+      '<a class="btn'+(primary?' primary':'')+'" href="'+gmaps(addr)+'" target="_blank" rel="noopener">Google Maps</a>'+
+      '<a class="btn" href="'+waze(addr)+'" target="_blank" rel="noopener">Waze</a></div>';
   }
   function stat(k,v,hot){ return '<div class="stat"><div class="k">'+k+'</div><div class="v'+(hot?' flame':'')+'">'+v+'</div></div>'; }
   function fbtn(id,label){ return '<button class="btn" data-filter="'+id+'" aria-pressed="'+(filter===id)+'">'+label+'</button>'; }
